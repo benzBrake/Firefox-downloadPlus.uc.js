@@ -65,9 +65,73 @@
         },
     }
 
+    const MAIN_CSS = `#downloadPlus-contextPopup-flashgot:not([addMenu~="select"]) .downloadPlus[condition~="select"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="link"])   .downloadPlus[condition~="link"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="mailto"]) .downloadPlus[condition~="mailto"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="image"])  .downloadPlus[condition~="image"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="canvas"])  .downloadPlus[condition~="canvas"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="media"])  .downloadPlus[condition~="media"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu~="input"])  .downloadPlus[condition~="input"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="select"] .downloadPlus[condition~="noselect"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="link"]   .downloadPlus[condition~="nolink"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="mailto"] .downloadPlus[condition~="nomailto"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="image"]  .downloadPlus[condition~="noimage"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="canvas"]  .downloadPlus[condition~="nocanvas"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="media"]  .downloadPlus[condition~="nomedia"],
+    #downloadPlus-contextPopup-flashgot[addMenu~="input"]  .downloadPlus[condition~="noinput"],
+    #downloadPlus-contextPopup-flashgot:not([addMenu=""])  .downloadPlus[condition~="normal"],
+    #downloadPlus-contextPopup-flashgot menuseparator+menuseparator { 
+        display: none;
+    }
+    .flashGot {
+        list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTcgMTh2LTJoLjVhMy41IDMuNSAwIDEgMC0yLjUtNS45NVYxMGE2IDYgMCAxIDAtOCA1LjY1OXYyLjA4OWE4IDggMCAxIDEgOS40NTgtMTAuNjVBNS41IDUuNSAwIDEgMSAxNy41IDE4bC0uNS4wMDF6bS00LTEuOTk1aDNsLTUgNi41di00LjVIOGw1LTYuNTA1djQuNTA1eiIvPjwvc3ZnPg==);
+    }`;
+
+    const UNKNOWN_CONTENT_CSS = `    #location {
+        padding: 3px 0;
+    }
+    #location,
+    #locationHbox {
+        height: 22px;
+    }
+    #locationText {
+        border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
+        padding-inline: 5px;
+        flex: 1;
+        appearance: none;
+        padding-block: 2px;
+        margin: 0;
+    }
+    #locationHbox {
+        display: flex;
+    }
+    #locationHbox[hidden="true"] {
+        visibility: collapse;
+    }
+    #encodingConvertButton {
+        min-width: unset;
+        list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGQ9Ik0zLjYwMzUxNTYgMkwwIDEyLjc5Mjk2OUwwIDEzTDEgMTNMMSAxMi45NTcwMzFMMS45ODYzMjgxIDEwTDcuMDE5NTMxMiAxMEw4IDEyLjk1NTA3OEw4IDEzTDkgMTNMOSAxMi43OTQ5MjJMNS40MTYwMTU2IDJMNC41IDJMMy42MDM1MTU2IDIgeiBNIDQuMzIyMjY1NiAzTDQuNSAzTDQuNjk1MzEyNSAzTDYuNjg3NSA5TDIuMzIwMzEyNSA5TDQuMzIyMjY1NiAzIHogTSAxMSA1TDExIDZMMTMuNSA2QzE0LjMzNTAxNSA2IDE1IDYuNjY0OTg0OSAxNSA3LjVMMTUgOC4wOTM3NUMxNC44NDI3NSA4LjAzNzEzMzUgMTQuNjc1NjcgOCAxNC41IDhMMTEuNSA4QzEwLjY3NzQ2OSA4IDEwIDguNjc3NDY4NiAxMCA5LjVMMTAgMTEuNUMxMCAxMi4zMjI1MzEgMTAuNjc3NDY5IDEzIDExLjUgMTNMMTMuNjcxODc1IDEzQzE0LjE0NjI5NyAxMyAxNC42MDQ0ODYgMTIuODYwMDg0IDE1IDEyLjYxMTMyOEwxNSAxM0wxNiAxM0wxNiAxMS43MDcwMzFMMTYgOS41TDE2IDcuNUMxNiA2LjEyNTAxNTEgMTQuODc0OTg1IDUgMTMuNSA1TDExIDUgeiBNIDExLjUgOUwxNC41IDlDMTQuNzgxNDY5IDkgMTUgOS4yMTg1MzE0IDE1IDkuNUwxNSAxMS4yOTI5NjlMMTQuNzMyNDIyIDExLjU2MDU0N0MxNC40NTEwNzQgMTEuODQxODk1IDE0LjA2OTE3MSAxMiAxMy42NzE4NzUgMTJMMTEuNSAxMkMxMS4yMTg1MzEgMTIgMTEgMTEuNzgxNDY5IDExIDExLjVMMTEgOS41QzExIDkuMjE4NTMxNCAxMS4yMTg1MzEgOSAxMS41IDkgeiIvPjwvc3ZnPg==);
+        border-radius: 0;
+        margin-block: 0;
+        margin-inline: 0;
+        outline: none;
+        appearance: none;
+        border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
+    }
+    #completeLinkDescription {
+        max-width: 340px;
+        cursor:pointer;
+    }
+    menupopup > menuitem, menupopup > menu {
+        padding-block: 4px;
+    }
+    [disabled="true"] {
+        color: GrayText !important;
+    }`;
+
     window.DownloadPlus = {
         _urls: [],
-        FLASHGOT_STRUCTURE: `{num};{download-manager};0;;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
+        FLASHGOT_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         FLASHGOT_FORCE_USERAGENT: {
             'd.pcs.baidu.com': 'pan.baidu.com'
         },
@@ -112,6 +176,7 @@
             switch (location.href) {
                 case 'chrome://browser/content/browser.xul':
                 case 'chrome://browser/content/browser.xhtml':
+                    this.style = addStyle(MAIN_CSS);
                     if (globalConfig["enable rename"]) this.changeNameMainInit();
                     if (globalConfig["enable save and open"]) this.saveAndOpenMain.init();
                     if (globalConfig["download complete notice"]) this.downloadCompleteNotice.init();
@@ -122,6 +187,7 @@
                     break;
                 case 'chrome://mozapps/content/downloads/unknownContentType.xul':
                 case 'chrome://mozapps/content/downloads/unknownContentType.xhtml':
+                    this.style = addStyle(UNKNOWN_CONTENT_CSS);
                     this.loadDownloadManagersList();
                     this.addExtraElements();
                     if (globalConfig["enable double click to copy link"]) this.dblClickToCopyLink();
@@ -161,7 +227,7 @@
             //     type: this.styleSheetService.AGENT_SHEET
             // }
             // this.styleSheetService.loadAndRegisterSheet(this.STYLE.url, this.STYLE.type);
-            this.style = addStyle(globalCss);
+
             if (this.appVersion >= 98 && this.appVersion <= 102) {
                 Services.prefs.setBoolPref("browser.download.improvements_to_download_panel", false);
             }
@@ -196,20 +262,33 @@
             // this.styleSheetService.unregisterSheet(this.STYLE.url, this.STYLE.type);
             if (this.style && this.style.parentNode) this.style.parentNode.removeChild(this.style);
         },
+        convertPath(quotedPath) {
+            quotedPath = replaceArray(quotedPath, [
+                '{libDir}',
+                '{tmpDir}',
+                '{profileDir}',
+                '{localProfileDir}'
+            ], [
+                'GreD',
+                'TmpD',
+                'ProfD',
+                'ProfD'
+            ]);
+            return Services.dirsvc.get("ProfD", Ci.nsIFile).path;
+        },
         handleRelativePath: function (path) {
             if (globalDebug) this.log("DownloadPlus handling path: " + path);
-            const OS = this.topWin.OS;
             if (path) {
                 let handled = false;
-                Object.keys(OS.Constants.Path).forEach(key => {
+                ["libDir", "tmpDir", "profileDir", "localProfileDir"].forEach(key => {
                     if (path.includes("{" + key + "}")) {
-                        path = path.replace("{" + key + "}", OS.Constants.Path[key]);
+                        path = path.replace("{" + key + "}", this.convertPath(key));
                         handled = true;
                     }
-                })
+                });
                 if (!handled) {
                     path = path.replace(/\//g, '\\').toLocaleLowerCase();
-                    var ffdir = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile).path;
+                    var ffdir = Services.dirsvc.get("ProfD", Ci.nsIFile).path;
                     if (/^(\\)/.test(path)) {
                         path = ffdir + path;
                     }
@@ -476,6 +555,7 @@
         contentAreaContextMenu: {
             init: function () {
                 let contextPopup = $("contentAreaContextMenu");
+                if (!contextPopup) return;
                 let { ownerDocument: aDoc } = contextPopup;
                 if (globalConfig["enable flashgot integration"] && !$("downloadPlus-menu-flashgot")) {
                     let flashGotContextMenu = $C(aDoc, 'menu', {
@@ -527,7 +607,7 @@
                             condition: '',
                             label: $L("download all links by flashgot"),
                             style: "list-style-image: url(chrome://browser/skin/downloads/downloads.svg);",
-                            hidden: 'true',
+                            hidden: true,
                             comment: 'need to implement'
                         }, {
 
@@ -964,6 +1044,7 @@
                 initData,
                 downloadNum,
                 downloadManager,
+                isPrivate,
                 referer,
                 cookies,
                 downloadLink,
@@ -981,6 +1062,7 @@
                 var { targetFile: partFile } = dialog.mLauncher; // Future may be take use of part file
                 ({ asciiSpec: downloadLink, host: downloadHost, username, userPass: password } = dialog.mLauncher.source);
                 downloadManager = target.getAttribute("manager");
+                isPrivate = dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext) + 0;
                 fileName = (document.querySelector("#locationText") ? document.querySelector("#locationText").value : dialog.mLauncher.suggestedFileName);
                 referer = dialog.mSourcePath;
                 extension = dialog.mLauncher.MIMEInfo.primaryExtension;
@@ -994,6 +1076,7 @@
                         ({ asciiSpec: referer, username, userPass: password } = gContextMenu.browser.currentURI);
                         downloadPageCookies = $Cookie(referer);
                         downloadPageReferer = referer;
+                        isPrivate = PrivateBrowsingUtils.isBrowserPrivate(gContextMenu.browser) + 0;
                         break;
                     default:
                         return;
@@ -1024,6 +1107,7 @@
             initData = replaceArray(this.FLASHGOT_STRUCTURE, [
                 '{num}',
                 '{download-manager}',
+                '{is-private}',
                 '{referer}',
                 '{url}',
                 '{description}',
@@ -1037,6 +1121,7 @@
             ], [
                 downloadNum || 1,
                 downloadManager,
+                isPrivate || 0,
                 referer || "",
                 downloadLink,
                 description || "",
@@ -1054,15 +1139,6 @@
             this.exec(this.flashgotPath, initFilePath);
             if (globalDebug) this.log("DownloadPlus calling flashgot", this.flashgotPath, initFilePath);
             if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) close();
-            // make string support replace with array
-            function replaceArray(replaceString, find, replace) {
-                var regex;
-                for (var i = 0; i < find.length; i++) {
-                    regex = new RegExp(find[i], "g");
-                    replaceString = replaceString.replace(regex, replace[i]);
-                }
-                return replaceString;
-            };
         },
         handleExtraAppBtnClick: async function (event) {
             let target = event.target;
@@ -1453,6 +1529,16 @@
 
         return Array.from(hash, (c, i) => toHexString(hash.charCodeAt(i))).join("");
     }
+
+    // make string support replace with array
+    function replaceArray(replaceString, find, replace) {
+        var regex;
+        for (var i = 0; i < find.length; i++) {
+            regex = new RegExp(find[i], "g");
+            replaceString = replaceString.replace(regex, replace[i]);
+        }
+        return replaceString;
+    };
 })({
     "remove file menuitem": true, // 下载管理增加超级删除菜单
     "download complete notice": true, // 下载完成后播放提示音
@@ -1465,72 +1551,5 @@
     "enable save to": true, // 显示快捷保存按钮
     "enable aria2 button": false, // 下载对话框增加aria2按钮
     "enable flashgot integration": true, // 下载对话框增加 FlashGot 功能
-}, `
-@-moz-document url-prefix("chrome://browser/content/browser.x") {
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="select"]) .downloadPlus[condition~="select"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="link"])   .downloadPlus[condition~="link"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="mailto"]) .downloadPlus[condition~="mailto"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="image"])  .downloadPlus[condition~="image"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="canvas"])  .downloadPlus[condition~="canvas"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="media"])  .downloadPlus[condition~="media"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu~="input"])  .downloadPlus[condition~="input"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="select"] .downloadPlus[condition~="noselect"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="link"]   .downloadPlus[condition~="nolink"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="mailto"] .downloadPlus[condition~="nomailto"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="image"]  .downloadPlus[condition~="noimage"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="canvas"]  .downloadPlus[condition~="nocanvas"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="media"]  .downloadPlus[condition~="nomedia"],
-    #downloadPlus-contextPopup-flashgot[addMenu~="input"]  .downloadPlus[condition~="noinput"],
-    #downloadPlus-contextPopup-flashgot:not([addMenu=""])  .downloadPlus[condition~="normal"],
-    #downloadPlus-contextPopup-flashgot menuseparator+menuseparator { 
-        display: none;
-    }
-    .flashGot {
-        list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTcgMTh2LTJoLjVhMy41IDMuNSAwIDEgMC0yLjUtNS45NVYxMGE2IDYgMCAxIDAtOCA1LjY1OXYyLjA4OWE4IDggMCAxIDEgOS40NTgtMTAuNjVBNS41IDUuNSAwIDEgMSAxNy41IDE4bC0uNS4wMDF6bS00LTEuOTk1aDNsLTUgNi41di00LjVIOGw1LTYuNTA1djQuNTA1eiIvPjwvc3ZnPg==);
-    }
-}
-@-moz-document url-prefix("chrome://mozapps/content/downloads/unknownContentType.x") {
-    #location {
-        padding: 3px 0;
-    }
-    #location,
-    #locationHbox {
-        height: 22px;
-    }
-    #locationText {
-        border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
-        padding-inline: 5px;
-        flex: 1;
-        appearance: none;
-        padding-block: 2px;
-        margin: 0;
-    }
-    #locationHbox {
-        display: flex;
-    }
-    #locationHbox[hidden="true"] {
-        visibility: collapse;
-    }
-    #encodingConvertButton {
-        min-width: unset;
-        list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGQ9Ik0zLjYwMzUxNTYgMkwwIDEyLjc5Mjk2OUwwIDEzTDEgMTNMMSAxMi45NTcwMzFMMS45ODYzMjgxIDEwTDcuMDE5NTMxMiAxMEw4IDEyLjk1NTA3OEw4IDEzTDkgMTNMOSAxMi43OTQ5MjJMNS40MTYwMTU2IDJMNC41IDJMMy42MDM1MTU2IDIgeiBNIDQuMzIyMjY1NiAzTDQuNSAzTDQuNjk1MzEyNSAzTDYuNjg3NSA5TDIuMzIwMzEyNSA5TDQuMzIyMjY1NiAzIHogTSAxMSA1TDExIDZMMTMuNSA2QzE0LjMzNTAxNSA2IDE1IDYuNjY0OTg0OSAxNSA3LjVMMTUgOC4wOTM3NUMxNC44NDI3NSA4LjAzNzEzMzUgMTQuNjc1NjcgOCAxNC41IDhMMTEuNSA4QzEwLjY3NzQ2OSA4IDEwIDguNjc3NDY4NiAxMCA5LjVMMTAgMTEuNUMxMCAxMi4zMjI1MzEgMTAuNjc3NDY5IDEzIDExLjUgMTNMMTMuNjcxODc1IDEzQzE0LjE0NjI5NyAxMyAxNC42MDQ0ODYgMTIuODYwMDg0IDE1IDEyLjYxMTMyOEwxNSAxM0wxNiAxM0wxNiAxMS43MDcwMzFMMTYgOS41TDE2IDcuNUMxNiA2LjEyNTAxNTEgMTQuODc0OTg1IDUgMTMuNSA1TDExIDUgeiBNIDExLjUgOUwxNC41IDlDMTQuNzgxNDY5IDkgMTUgOS4yMTg1MzE0IDE1IDkuNUwxNSAxMS4yOTI5NjlMMTQuNzMyNDIyIDExLjU2MDU0N0MxNC40NTEwNzQgMTEuODQxODk1IDE0LjA2OTE3MSAxMiAxMy42NzE4NzUgMTJMMTEuNSAxMkMxMS4yMTg1MzEgMTIgMTEgMTEuNzgxNDY5IDExIDExLjVMMTEgOS41QzExIDkuMjE4NTMxNCAxMS4yMTg1MzEgOSAxMS41IDkgeiIvPjwvc3ZnPg==);
-        border-radius: 0;
-        margin-block: 0;
-        margin-inline: 0;
-        outline: none;
-        appearance: none;
-        border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
-    }
-    #completeLinkDescription {
-        max-width: 340px;
-        cursor:pointer;
-    }
-    menupopup > menuitem, menupopup > menu {
-        padding-block: 4px;
-    }
-    [disabled="true"] {
-        color: GrayText !important;
-    }
-}
-`,
+},
     false);
