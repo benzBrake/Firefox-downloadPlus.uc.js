@@ -13,7 +13,7 @@
 // @homepage        https://github.com/benzBrake/FirefoxCustomize
 // @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // ==/UserScript==
-(function (globalConfig, globalCss, globalDebug) {
+(function (globalConfig, globalDebug) {
     if (window.DownloadPlus) return;
     let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
     const Services = globalThis.Services || Cu.import("resource://gre/modules/Services.jsm").Services;
@@ -131,6 +131,7 @@
 
     window.DownloadPlus = {
         _urls: [],
+        _paths: {},
         FLASHGOT_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         FLASHGOT_FORCE_USERAGENT: {
             'd.pcs.baidu.com': 'pan.baidu.com'
@@ -173,6 +174,10 @@
         init: function () {
             if (globalDebug) this.log("DownloadPlus init: " + location.href);
             this.$L = $L;
+            ["GreD", "ProfD", "ProfLD", "UChrm", "TmpD", "Home", "Desk", "Favs", "LocalAppData"].forEach(key => {
+                var path = Services.dirsvc.get(key, Ci.nsIFile);
+                this._paths[key] = path.path;
+            });
             switch (location.href) {
                 case 'chrome://browser/content/browser.xul':
                 case 'chrome://browser/content/browser.xhtml':
@@ -262,38 +267,38 @@
             // this.styleSheetService.unregisterSheet(this.STYLE.url, this.STYLE.type);
             if (this.style && this.style.parentNode) this.style.parentNode.removeChild(this.style);
         },
-        convertPath(quotedPath) {
-            quotedPath = replaceArray(quotedPath, [
-                '{libDir}',
-                '{tmpDir}',
-                '{profileDir}',
-                '{localProfileDir}'
-            ], [
-                'GreD',
-                'TmpD',
-                'ProfD',
-                'ProfD'
-            ]);
-            return Services.dirsvc.get("ProfD", Ci.nsIFile).path;
-        },
-        handleRelativePath: function (path) {
-            if (globalDebug) this.log("DownloadPlus handling path: " + path);
+        handleRelativePath: function (path, parentPath) {
             if (path) {
                 let handled = false;
-                ["libDir", "tmpDir", "profileDir", "localProfileDir"].forEach(key => {
+                path = replaceArray(path, [
+                    "{homeDir}",
+                    "{libDir}",
+                    "{localProfileDir}",
+                    "{profileDir}",
+                    "{tmpDir}"
+                ], [
+                    "{Home}",
+                    "{GreD}",
+                    "{ProfLD}",
+                    "{ProfD}",
+                    "{TmpD}"
+                ]);
+                ["GreD", "ProfD", "ProfLD", "UChrm", "TmpD", "Home", "Desk", "Favs", "LocalAppData"].forEach(key => {
                     if (path.includes("{" + key + "}")) {
-                        path = path.replace("{" + key + "}", this.convertPath(key));
+                        path = path.replace("{" + key + "}", this._paths[key] || "");
                         handled = true;
                     }
-                });
+                })
                 if (!handled) {
                     path = path.replace(/\//g, '\\').toLocaleLowerCase();
-                    var ffdir = Services.dirsvc.get("ProfD", Ci.nsIFile).path;
                     if (/^(\\)/.test(path)) {
-                        path = ffdir + path;
+                        if (!parentPath) {
+                            parentPath = Cc['@mozilla.org/file/directory_service;1'].getService(Components.interfaces.nsIProperties).get("ProfD", Components.interfaces.nsIFile).path;
+                        }
+                        path = parentPath + path;
+                        path = path.replace("\\\\", "\\");
                     }
                 }
-                if (globalDebug) this.log("DownloadPlus handle path complete: " + path);
                 return path;
             }
         },
