@@ -16,6 +16,10 @@ Firefox下载增强工具，依赖 userChrome.js Loader
 
 ### 说明(Usage)
 
+`flashgot.exe`默认存放路径为
+
+> ProfileDir\chrome\UserTools\FlashGot.exe
+
 高级首选项（about:config）
 
 >`userChromeJS.downloadPlus.flashgotPath`: FlashGot.exe 路径

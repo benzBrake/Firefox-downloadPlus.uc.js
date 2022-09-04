@@ -17,7 +17,6 @@
     if (window.DownloadPlus) return;
     let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
     const Services = globalThis.Services || Cu.import("resource://gre/modules/Services.jsm").Services;
-    const OS = globalThis.OS || Cu.import("resource://gre/modules/osfile/osfile_async_front.jsm").OS;
     const FileUtils = globalThis.FileUtils || Cu.import("resource://gre/modules/FileUtils.jsm").FileUtils;
 
     const LANG = {
@@ -60,7 +59,7 @@
         "aria2": {
             "config": "enable aria2 button",
             "label": $L("button aria2"),
-            "exec": "\\chrome\\resources\\tools\\Aria2\\aria2c.exe",
+            "exec": "\\chrome\\UserTools\\Aria2\\aria2c.exe",
             "text": '-x 8 -k 10M --load-cookies={cookiePath} --referer={referer} -d {path} {link}',
         },
     }
@@ -85,6 +84,9 @@
     }
     .flashGot {
         list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTcgMTh2LTJoLjVhMy41IDMuNSAwIDEgMC0yLjUtNS45NVYxMGE2IDYgMCAxIDAtOCA1LjY1OXYyLjA4OWE4IDggMCAxIDEgOS40NTgtMTAuNjVBNS41IDUuNSAwIDEgMSAxNy41IDE4bC0uNS4wMDF6bS00LTEuOTk1aDNsLTUgNi41di00LjVIOGw1LTYuNTA1djQuNTA1eiIvPjwvc3ZnPg==);
+    }
+    #contentAreaContextMenu:not([needsgutter]) > .flashGot > .menu-iconic-left {
+        display: none;
     }`;
 
     const UNKNOWN_CONTENT_CSS = `    #location {
@@ -161,7 +163,7 @@
                 flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT);
             } catch (e) {
                 if (globalDebug) this.error(e);
-                flashgotPref = "\\chrome\\resources\\tools\\FlashGot.exe";
+                flashgotPref = "\\chrome\\UserTools\\FlashGot.exe";
             }
             flashgotPref = this.handleRelativePath(flashgotPref);
             var flashgotPath = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
