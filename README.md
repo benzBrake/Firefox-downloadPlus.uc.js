@@ -22,17 +22,41 @@ Firefox下载增强工具，依赖 userChrome.js Loader
 
 高级首选项（about:config）
 
->`userChromeJS.downloadPlus.flashgotPath`: FlashGot.exe 路径
+>userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
 >
->`userChromeJS.downloadPlus.flashgotDefaultManager`: 默认下载器（默认情况下不需要修改，下载弹窗可以设置）
+>userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
 >
->`userChromeJS.downloadPlus.flashgotManagers`下载器列表（默认情况下不需要修改，下载弹窗可以一键读取）
+>userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
+>
+>userChromeJS.downloadPlus.flashgotManagers 下载器列表缓存（一般不需要修改)
+>
+>userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
+>
+>userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
+>
+>userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
+>
+>userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
+>
+>userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
+>
+>userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
+>
+>userChromeJS.downloadPlus.enableDownloadNotice 启用下载通知音
+>
+>userChromeJS.downloadPlus.notice.DL_START 下载开始通知音路径
+>
+>userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
+>
+>userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
+>
+>userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
 
 FlashGot.exe 支持调用哪些下载工具详见：[pouriap/Firefox-DownloadGrab: A Firefox addon that lets you download links with external download manager](https://github.com/pouriap/Firefox-DownloadGrab)
 
 ### 本地化(Localization)
 
-修改脚本，大概30行开始
+修改脚本，大概37行开始
 
 ```
 const LANG = {
