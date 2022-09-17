@@ -26,7 +26,7 @@
 // @version         0.2.0
 // @compatibility   Firefox 72
 // @homepage        https://github.com/benzBrake/FirefoxCustomize
-// @note            20220916 重构脚本，实现从硬盘删除，保存并打开，下载改名，调用 flashgot
+// @note            20220917 重构脚本
 // @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // ==/UserScript==
 (function (globalDebug) {
@@ -298,11 +298,10 @@
             }
 
             if (location.href.startsWith("chrome://browser/content/places/places.x")) {
-                this.PLACES_STYLE = addStyle(parent.sss, `
+                this.PLACES_STYLE = addStyle(`
                 #downloadsContextMenu:not([needsgutter]) > .downloadPlus-menuitem > .menu-iconic-left {
                     visibility: collapse;
-                }
-                `, 2);
+                }`);
             }
 
             if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
