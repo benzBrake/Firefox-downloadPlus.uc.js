@@ -25,7 +25,7 @@
 // @include         chrome://mozapps/content/downloads/unknownContentType.xul
 // @version         0.2.0
 // @compatibility   Firefox 72
-// @homepage        https://github.com/benzBrake/FirefoxCustomize
+// @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // @note            20220917 重构脚本
 // @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // ==/UserScript==
@@ -549,7 +549,7 @@
 
         },
         initContextMenu(doc, win) {
-            let ins = $("context-sep-sendlinktodevice", doc);
+            let ins = $("inspect-separator", doc);
             let link = $C(doc, 'menuitem', {
                 id: 'downloadPlus-flashgot-this-link',
                 class: 'downloadPlus FlashGot',
@@ -558,7 +558,7 @@
                 trigger: "link",
                 oncommand: "DownloadPlus.modules.flashgot.handleFlashGotEvent(event);"
             });
-            ins.after(link);
+            ins.before(link);
         },
         getDefaultDownloadManager() {
             return DownloadPlus.prefs.get(this.PREF_FLASHGOT_DEFAULT, "");
