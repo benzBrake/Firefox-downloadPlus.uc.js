@@ -29,7 +29,7 @@
 // @note            20220917 重构脚本
 // @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // ==/UserScript==
-(function (globalDebug) {
+(function () {
     if (window.DownloadPlus) return;
     let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
     const Services = globalThis.Services || Cu.import("resource://gre/modules/Services.jsm").Services;
@@ -62,6 +62,7 @@
 
     const _LOCALE = LANG.hasOwnProperty(Services.locale.appLocaleAsBCP47) ? Services.locale.appLocaleAsBCP47 : 'zh-CN';
     const TopWindow = Services.wm.getMostRecentWindow("navigator:browser");
+    const globalDebug = Services.prefs.getBoolPref("userChromeJS.downloadPlus.debug", false);
 
     // 快捷保存列表
     // need to implement read by shell32.dll and support linux
