@@ -785,7 +785,9 @@
                 isPrivate = dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext) + 0;
                 fileName = (document.querySelector("#locationText") ? document.querySelector("#locationText").value : dialog.mLauncher.suggestedFileName);
                 referer = dialog.mSourcePath;
-                extension = dialog.mLauncher.MIMEInfo.primaryExtension;
+                try {
+                    extension = dialog.mLauncher.MIMEInfo.primaryExtension;
+                } catch (e) { }
             } else if (target.hasAttribute("trigger")) {
                 switch (target.getAttribute("trigger")) {
                     case 'link':
@@ -974,7 +976,7 @@
                     close();
                 }
             }, true);
-            if (globalDebug) this.log("DownloadPlus change name init complete.");
+            if (globalDebug) DownloadPlus.log("DownloadPlus change name init complete.");
         }
     }
 
@@ -1028,7 +1030,7 @@
                     $R($('save-and-open', doc));
                 }
             }
-            if (globalDebug) this.log("DownloadPlus save and open destroy complete.");
+            if (globalDebug) DownloadPlus.log("DownloadPlus save and open destroy complete.");
         },
         init(doc, win, location) {
             const { DownloadPlus } = win;
@@ -1054,7 +1056,7 @@
                     dialogElement.getButton("accept").click();
                 });
                 dialog.dialogElement('unknownContentType').getButton('cancel').before(saveAndOpen);
-                if (globalDebug) this.log("DownloadPlus save and open init complete.");
+                if (globalDebug) DownloadPlus.log("DownloadPlus save and open init complete.");
             }
         },
         view: {
@@ -1099,7 +1101,7 @@
                 });
                 let ins = dialog.dialogElement('unknownContentType').getButton('cancel');
                 ins.before(saveAs);
-                if (globalDebug) this.log("DownloadPlus save as init complete.");
+                if (globalDebug) DownloadPlus.log("DownloadPlus save as init complete.");
             }
         },
     }
