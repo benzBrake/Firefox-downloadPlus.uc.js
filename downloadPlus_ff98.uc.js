@@ -23,6 +23,9 @@
 // @include         chrome://browser/content/places/places.xul
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @include         chrome://mozapps/content/downloads/unknownContentType.xul
+// @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
+// @include         chrome://browser/content/downloads/contentAreaDownloadsView.xul
+// @include         about:downloads
 // @version         0.2.0
 // @compatibility   Firefox 72
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
@@ -239,6 +242,9 @@
         init(doc, win, location, parent) {
             if (!this.STYLE_DOWNLOADS_POPUP) {
                 this.STYLE_DOWNLOADS_POPUP = addStyle(`
+                #unknownContentTypeWindow {
+                    max-width: 500px;
+                }
                 #location {
                     padding: 3px 0;
                 }
@@ -279,8 +285,7 @@
                 }
                 [disabled="true"] {
                     color: GrayText !important;
-                }
-                `);
+                }`);
             }
             if (location.href.startsWith("chrome://browser/content/browser.x")) {
                 this.MAIN_STYLE = addStyle(`
@@ -298,7 +303,7 @@
                 }`);
             }
 
-            if (location.href.startsWith("chrome://browser/content/places/places.x")) {
+            if (location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("about:downloads") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
                 this.PLACES_STYLE = addStyle(`
                 #downloadsContextMenu:not([needsgutter]) > .downloadPlus-menuitem > .menu-iconic-left {
                     visibility: collapse;
@@ -368,18 +373,23 @@
                 }
             }
 
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x")) {
-                let context = $("downloadsContextMenu", doc);
-                if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
-                context.insertBefore(
-                    $C(document, "menuitem", {
+            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
+                doc.querySelectorAll("#downloadsContextMenu").forEach(context => {
+                    let removeFromDisk = $C(doc, "menuitem", {
                         id: 'downloadRemoveFromHistoryEnhanceMenuItem',
                         class: 'downloadRemoveFromHistoryMenuItem downloadPlus-menuitem',
-                        onclick: "window.DownloadPlus.modules.removeFileMenuitem.action(event);",
+                        onclick: "DownloadPlus.modules.removeFileMenuitem.action(event);",
                         label: $L("remove from disk")
-                    }),
-                    context.querySelector(".downloadRemoveFromHistoryMenuItem")
-                );
+                    });
+                    if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
+                    if (context.querySelector(".downloadRemoveFromHistoryMenuItem"))
+                        context.insertBefore(
+                            removeFromDisk,
+                            context.querySelector(".downloadRemoveFromHistoryMenuItem")
+                        );
+                    else
+                        context.appendChild(removeFromDisk);
+                });
             }
         },
         action(event) {
@@ -401,6 +411,7 @@
                     file.remove(0);
                 }
             }
+
             if (location.href.startsWith("chrome://browser/content/browser.x")) {
                 let aTriggerNode = DownloadsView.contextMenu.triggerNode,
                     element = aTriggerNode.closest('.download-state'),
@@ -408,8 +419,9 @@
                     path = sShell.download.target.path;
                 removeSelectedFile(path);
                 sShell.doCommand("cmd_delete");
-            } else if (location.href.startsWith("chrome://browser/content/places/places.x")) {
+            } else if (location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
                 var ddBox = document.getElementById("downloadsRichListBox");
+                console.log(ddBox);
                 if (!(ddBox && ddBox._placesView)) {
                     ddBox = document.getElementById("downloadsListBox");
                 }
@@ -433,7 +445,7 @@
                     delete this.clearHistoryOnDelete;
                 }
             }
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x")) {
+            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("about:downloads")) {
                 let context = $("downloadsContextMenu", doc),
                     child = context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem");
                 if (context && child)
@@ -515,7 +527,7 @@
         PREF_ENABLED: 'userChromeJS.downloadPlus.enableFlashgotIntergention',
         FLASHGOT_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         FLASHGOT_FORCE_USERAGENT: {
-            'd.pcs.baidu.com': 'pan.baidu.com'
+            'd.pcs.baidu.com': 'netdisk;7.0.3.2;PC;PC-Windows;10.0.17763'
         },
         FLASHGOT_COOKIES_FILTER: {
             'd.pcs.baidu.com': ['BDUSS']
@@ -779,7 +791,7 @@
                 username,
                 password;
             if (target.hasAttribute("manager")) {
-                var { targetFile: partFile } = dialog.mLauncher; // Future may be take use of part file
+                let { targetFile: partFile } = dialog.mLauncher; // Future may be take use of part file
                 ({ asciiSpec: downloadLink, host: downloadHost, username, userPass: password } = dialog.mLauncher.source);
                 downloadManager = target.getAttribute("manager");
                 isPrivate = dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext) + 0;
