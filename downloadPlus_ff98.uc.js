@@ -242,9 +242,6 @@
         init(doc, win, location, parent) {
             if (!this.STYLE_DOWNLOADS_POPUP) {
                 this.STYLE_DOWNLOADS_POPUP = addStyle(`
-                #unknownContentTypeWindow {
-                    max-width: 500px;
-                }
                 #location {
                     padding: 3px 0;
                 }
@@ -285,7 +282,8 @@
                 }
                 [disabled="true"] {
                     color: GrayText !important;
-                }`);
+                }
+                `);
             }
             if (location.href.startsWith("chrome://browser/content/browser.x")) {
                 this.MAIN_STYLE = addStyle(`
@@ -373,23 +371,18 @@
                 }
             }
 
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
-                doc.querySelectorAll("#downloadsContextMenu").forEach(context => {
-                    let removeFromDisk = $C(doc, "menuitem", {
+            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x")) {
+                let context = $("downloadsContextMenu", doc);
+                if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
+                context.insertBefore(
+                    $C(document, "menuitem", {
                         id: 'downloadRemoveFromHistoryEnhanceMenuItem',
                         class: 'downloadRemoveFromHistoryMenuItem downloadPlus-menuitem',
-                        onclick: "DownloadPlus.modules.removeFileMenuitem.action(event);",
+                        onclick: "window.DownloadPlus.modules.removeFileMenuitem.action(event);",
                         label: $L("remove from disk")
-                    });
-                    if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
-                    if (context.querySelector(".downloadRemoveFromHistoryMenuItem"))
-                        context.insertBefore(
-                            removeFromDisk,
-                            context.querySelector(".downloadRemoveFromHistoryMenuItem")
-                        );
-                    else
-                        context.appendChild(removeFromDisk);
-                });
+                    }),
+                    context.querySelector(".downloadRemoveFromHistoryMenuItem")
+                );
             }
         },
         action(event) {
@@ -421,7 +414,6 @@
                 sShell.doCommand("cmd_delete");
             } else if (location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
                 var ddBox = document.getElementById("downloadsRichListBox");
-                console.log(ddBox);
                 if (!(ddBox && ddBox._placesView)) {
                     ddBox = document.getElementById("downloadsListBox");
                 }
@@ -494,6 +486,39 @@
                 } else {
                     event.target.querySelectorAll(`.downloadPlus[condition~="normal"]`).forEach(m => m.hidden = false);
                 }
+            }
+        }
+    }
+
+    DownloadPlus.modules.autoCloseBlankTab = {
+        listener: {
+            onStateChange(aBrowser, aWebProgress, aRequest, aStateFlags, aStatus) {
+                if (!aRequest || aWebProgress && !aWebProgress.isTopLevel) return;
+                let location;
+                try {
+                    aRequest.QueryInterface(Ci.nsIChannel);
+                    location = aRequest.URI;
+                } catch (ex) { }
+                if ((aStateFlags & Ci.nsIWebProgressListener.STATE_STOP) &&
+                    (aStateFlags & Ci.nsIWebProgressListener.STATE_IS_NETWORK) &&
+                    location && location.spec !== 'about:blank' &&
+                    aBrowser.documentURI && aBrowser.documentURI.spec === 'about:blank' &&
+                    Components.isSuccessCode(aStatus) && !aWebProgress.isLoadingDocument
+                ) {
+                    setTimeout(() => {
+                        gBrowser.removeTab(gBrowser.getTabForBrowser(aBrowser));
+                    }, 100);
+                }
+            }
+        },
+        init: function (doc, win, location) {
+            if (location.href.startsWith("chrome://browser/content/browser.x")) {
+                win.gBrowser.addProgressListener(this.listener);
+            }
+        },
+        destroy: function (doc, win, location) {
+            if (location.href.startsWith("chrome://browser/content/browser.x")) {
+                win.gBrowser.removeProgressListener(this.listener);
             }
         }
     }
@@ -791,7 +816,7 @@
                 username,
                 password;
             if (target.hasAttribute("manager")) {
-                let { targetFile: partFile } = dialog.mLauncher; // Future may be take use of part file
+                var { targetFile: partFile } = dialog.mLauncher; // Future may be take use of part file
                 ({ asciiSpec: downloadLink, host: downloadHost, username, userPass: password } = dialog.mLauncher.source);
                 downloadManager = target.getAttribute("manager");
                 isPrivate = dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext) + 0;
