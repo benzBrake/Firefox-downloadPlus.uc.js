@@ -5,7 +5,7 @@
 // userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
 // userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
 // userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
-// userChromeJS.downloadPlus.flashgotManagers 下载器列表缓存（一般不需要修改)
+// userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
 // userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
 // userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
 // userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
@@ -242,6 +242,9 @@
         init(doc, win, location, parent) {
             if (!this.STYLE_DOWNLOADS_POPUP) {
                 this.STYLE_DOWNLOADS_POPUP = addStyle(`
+                #unknownContentTypeWindow {
+                    max-width: 500px;
+                }
                 #location {
                     padding: 3px 0;
                 }
@@ -547,7 +550,7 @@
 
     DownloadPlus.modules.flashgot = {
         PREF_FLASHGOT_DEFAULT: 'userChromeJS.downloadPlus.flashgotDefaultManager',
-        PREF_FLASHGOT_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotManagers',
+        PREF_FLASHGOT_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotDownloadManagers',
         PREF_FLASHGOT: 'userChromeJS.downloadPlus.flashgotPath',
         PREF_ENABLED: 'userChromeJS.downloadPlus.enableFlashgotIntergention',
         FLASHGOT_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
