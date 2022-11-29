@@ -1159,12 +1159,39 @@
             const { DownloadPlus } = win;
             if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
                 let saveTo = $C(document, 'button', {
+                    id: "save-to",
                     label: $L("save to"),
                     class: 'dialog-button',
                     hidden: false,
-                    type: 'menu',
-                    accesskey: 'T'
+                    accesskey: 'T',
+                    style: 'list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");',
+                    onclick: function (event) {
+                        if (event.target !== event.currentTarget) return;
+                        let btn = event.target;
+                        if (btn.hasAttribute("open")) {
+                            closeMenus(btn);
+                        } else {
+                            let pos = "after_position", x = 0, y = 0 + btn.clientHeight;
+                            btn.querySelector("menupopup").openPopup(this, pos, x, y);
+                        }
+                        function closeMenus(node) {
+                            if ("tagName" in node) {
+                                if (
+                                    node.namespaceURI ==
+                                    "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" &&
+                                    (node.tagName == "menupopup" || node.tagName == "popup")
+                                ) {
+                                    node.hidePopup();
+                                }
+
+                                closeMenus(node.parentNode);
+                            }
+                        }
+                    }
                 }), saveToMenu = $C(document, 'menupopup', {});
+                setTimeout(function () {
+                    saveTo.querySelector(".button-box").setAttribute("style", "display: flex; flex-direction: row-reverse;");
+                }, 100);
                 saveTo.appendChild(saveToMenu);
                 this.SAVE_LIST.forEach(dir => {
                     var [name, dir] = [dir[1], dir[0]];
@@ -1186,7 +1213,7 @@
                         dialog.onCancel = function () { };
                         close();
                     };
-                })
+                });
                 let ins = dialog.dialogElement('unknownContentType').getButton('cancel');
                 ins.before(saveTo);
                 if (globalDebug) DownloadPlus.log("DownloadPlus save to init complete.");
