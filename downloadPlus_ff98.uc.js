@@ -8,6 +8,7 @@
 // userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
 // userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
 // userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
+// userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换
 // userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
 // userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
 // userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
@@ -960,51 +961,54 @@
                 id: "locationText",
                 value: dialog.mLauncher.suggestedFileName,
                 flex: 1
-            })), encodingConvertButton = locationHbox.appendChild($C(doc, 'button', {
-                id: 'encodingConvertButton',
-                type: 'menu',
-                tooltiptext: $L("encoding convert tooltip")
             }));
-            let converter = Cc['@mozilla.org/intl/scriptableunicodeconverter']
-                .getService(Ci.nsIScriptableUnicodeConverter);
-            let menupopup = $C(doc, 'menupopup', {}), orginalString;
-            menupopup.appendChild($C(doc, 'menuitem', {
-                value: dialog.mLauncher.suggestedFileName,
-                label: $L("original name") + dialog.mLauncher.suggestedFileName,
-                default: true,
-            }, ['class']));
-            try {
-                orginalString = (opener.localStorage.getItem(dialog.mLauncher.source.spec) ||
-                    dialog.mLauncher.source.asciiSpec.substring(dialog.mLauncher.source.asciiSpec.lastIndexOf("/"))).replace(/[\/:*?"<>|]/g, "");
-                opener.localStorage.removeItem(dialog.mLauncher.source.spec)
-            } catch (e) {
-                orginalString = dialog.mLauncher.suggestedFileName;
-            }
-            function createMenuitem(encoding) {
-                converter.charset = encoding;
-                let menuitem = menupopup.appendChild(document.createXULElement("menuitem"));
-                menuitem.value = converter.ConvertToUnicode(orginalString).replace(/^"(.+)"$/, "$1");
-                menuitem.label = encoding + ": " + menuitem.value;
-            }
-            ["GB18030", "BIG5", "Shift-JIS"].forEach(function (item) {
-                createMenuitem(item)
-            });
-            menupopup.addEventListener('click', (event) => {
-                let { target } = event;
-                if (target.localName === "menuitem") {
-                    locationText.value = target.value;
+            if (DownloadPlus.prefs.get("userChromeJS.downloadPlus.enableEncodeConvert", true)) {
+                let encodingConvertButton = locationHbox.appendChild($C(doc, 'button', {
+                    id: 'encodingConvertButton',
+                    type: 'menu',
+                    tooltiptext: $L("encoding convert tooltip")
+                }));
+                let converter = Cc['@mozilla.org/intl/scriptableunicodeconverter']
+                    .getService(Ci.nsIScriptableUnicodeConverter);
+                let menupopup = $C(doc, 'menupopup', {}), orginalString;
+                menupopup.appendChild($C(doc, 'menuitem', {
+                    value: dialog.mLauncher.suggestedFileName,
+                    label: $L("original name") + dialog.mLauncher.suggestedFileName,
+                    default: true,
+                }, ['class']));
+                try {
+                    orginalString = (opener.localStorage.getItem(dialog.mLauncher.source.spec) ||
+                        dialog.mLauncher.source.asciiSpec.substring(dialog.mLauncher.source.asciiSpec.lastIndexOf("/"))).replace(/[\/:*?"<>|]/g, "");
+                    opener.localStorage.removeItem(dialog.mLauncher.source.spec)
+                } catch (e) {
+                    orginalString = dialog.mLauncher.suggestedFileName;
                 }
-            });
-            encodingConvertButton.appendChild(menupopup);
-            $('mode', doc).addEventListener("select", () => {
-                if (dialog.dialogElement("save").selected) {
-                    location.hidden = true;
-                    locationHbox.hidden = false;
-                } else {
-                    location.hidden = false;
-                    locationHbox.hidden = true;
+                function createMenuitem(encoding) {
+                    converter.charset = encoding;
+                    let menuitem = menupopup.appendChild(document.createXULElement("menuitem"));
+                    menuitem.value = converter.ConvertToUnicode(orginalString).replace(/^"(.+)"$/, "$1");
+                    menuitem.label = encoding + ": " + menuitem.value;
                 }
-            });
+                ["GB18030", "BIG5", "Shift-JIS"].forEach(function (item) {
+                    createMenuitem(item)
+                });
+                menupopup.addEventListener('click', (event) => {
+                    let { target } = event;
+                    if (target.localName === "menuitem") {
+                        locationText.value = target.value;
+                    }
+                });
+                encodingConvertButton.appendChild(menupopup);
+                $('mode', doc).addEventListener("select", () => {
+                    if (dialog.dialogElement("save").selected) {
+                        location.hidden = true;
+                        locationHbox.hidden = false;
+                    } else {
+                        location.hidden = false;
+                        locationHbox.hidden = true;
+                    }
+                });
+            }
             dialog.dialogElement("save").selected && dialog.dialogElement("save").click();
             window.addEventListener("dialogaccept", function (event) {
                 if ((document.querySelector("#locationText").value != dialog.mLauncher.suggestedFileName) && dialog.dialogElement("save").selected) {
