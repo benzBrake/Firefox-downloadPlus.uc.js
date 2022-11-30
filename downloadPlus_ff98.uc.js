@@ -549,6 +549,25 @@
         }
     }
 
+    DownloadPlus.modules.doubleClickToOpen = {
+        PREF_ENABLED: 'userChromeJS.downloadPlus.enableDoubleClickToOpen',
+        init(doc, win, location) {
+            doc.querySelector("#open").addEventListener("dblclick", function (event) {
+                dialog.dialogElement('unknownContentType').getButton("accept").click();
+            });
+        }
+    }
+
+    DownloadPlus.modules.doubleClickToSave = {
+        PREF_ENABLED: 'userChromeJS.downloadPlus.enableDoubleClickToSave',
+        init(doc, win, location) {
+            doc.querySelector("#save").addEventListener("dblclick", function (event) {
+                dialog.dialogElement('unknownContentType').getButton("accept").click();
+            });
+        }
+    }
+
+
     DownloadPlus.modules.flashgot = {
         PREF_FLASHGOT_DEFAULT: 'userChromeJS.downloadPlus.flashgotDefaultManager',
         PREF_FLASHGOT_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotDownloadManagers',
