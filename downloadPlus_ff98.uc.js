@@ -1,24 +1,28 @@
 // ==UserScript==
 // @name            DownloadPlus_ff98.uc.js
 // @description     修改整合自（w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞），已重写代码。
-// 相关 about:config 选项
-// userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
-// userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
-// userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
-// userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
-// userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
-// userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
-// userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换
-// userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
-// userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
-// userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
-// userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
-// userChromeJS.downloadPlus.enableDownloadNotice 启用下载通知音
-// userChromeJS.downloadPlus.notice.DL_START 下载开始通知音路径
-// userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
-// userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
-// userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
 // @author          Ryan
+// @note 相关 about:config 选项
+// @note userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
+// @note userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
+// @note userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
+// @note userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
+// @note userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
+// @note userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
+// @note userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换
+// @note userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
+// @note userChromeJS.downloadPlus.enableDoubleClickToOpen 双击打开
+// @note userChromeJS.downloadPlus.enableDoubleClickToSave 双击保存
+// @note userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
+// @note userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
+// @note userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
+// @note userChromeJS.downloadPlus.enableDownloadNotice 启用下载通知音
+// @note userChromeJS.downloadPlus.notice.DL_START 下载开始通知音路径
+// @note userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
+// @note userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
+// @note userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
+// @note            20220917 重构脚本
+// @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // @include         main
 // @include         chrome://browser/content/places/places.xhtml
 // @include         chrome://browser/content/places/places.xul
@@ -30,8 +34,6 @@
 // @version         0.2.0
 // @compatibility   Firefox 72
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
-// @note            20220917 重构脚本
-// @note            20220730 修复右键菜单 BUG 独立成一个 REPO，移除 osfile_async_front.jsm 依赖，版本号从 0.1.0 起跳
 // ==/UserScript==
 (function () {
     if (window.DownloadPlus) return;
@@ -552,18 +554,22 @@
     DownloadPlus.modules.doubleClickToOpen = {
         PREF_ENABLED: 'userChromeJS.downloadPlus.enableDoubleClickToOpen',
         init(doc, win, location) {
-            doc.querySelector("#open").addEventListener("dblclick", function (event) {
-                dialog.dialogElement('unknownContentType').getButton("accept").click();
-            });
+            if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
+                doc.querySelector("#open").addEventListener("dblclick", function (event) {
+                    dialog.dialogElement('unknownContentType').getButton("accept").click();
+                });
+            }
         }
     }
 
     DownloadPlus.modules.doubleClickToSave = {
         PREF_ENABLED: 'userChromeJS.downloadPlus.enableDoubleClickToSave',
         init(doc, win, location) {
-            doc.querySelector("#save").addEventListener("dblclick", function (event) {
-                dialog.dialogElement('unknownContentType').getButton("accept").click();
-            });
+            if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
+                doc.querySelector("#save").addEventListener("dblclick", function (event) {
+                    dialog.dialogElement('unknownContentType').getButton("accept").click();
+                });
+            }
         }
     }
 
