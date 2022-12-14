@@ -244,10 +244,14 @@
     DownloadPlus.modules.addStyle = {
         init(doc, win, location, parent) {
             if (!this.STYLE_DOWNLOADS_POPUP) {
-                this.STYLE_DOWNLOADS_POPUP = addStyle(`
-                #unknownContentTypeWindow {
-                    max-width: 500px;
+                let maxWidth = "";
+                if (DownloadPlus.appVersion == 108) {
+                    maxWidth = `#unknownContentTypeWindow {
+                    	max-width: 500px;
+                	}`;
                 }
+                this.STYLE_DOWNLOADS_POPUP = addStyle(`
+				${maxWidth}
                 #location {
                     padding: 3px 0;
                 }
@@ -293,17 +297,8 @@
             }
             if (location.href.startsWith("chrome://browser/content/browser.x")) {
                 this.MAIN_STYLE = addStyle(`
-                #contentAreaContextMenu:not([needsgutter]) > .downloadPlus:is(menu, menuitem) > .menu-iconic-left {
-                    visibility: collapse;
-                }
                 .FlashGot {
                     list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTcgMTh2LTJoLjVhMy41IDMuNSAwIDEgMC0yLjUtNS45NVYxMGE2IDYgMCAxIDAtOCA1LjY1OXYyLjA4OWE4IDggMCAxIDEgOS40NTgtMTAuNjVBNS41IDUuNSAwIDEgMSAxNy41IDE4bC0uNS4wMDF6bS00LTEuOTk1aDNsLTUgNi41di00LjVIOGw1LTYuNTA1djQuNTA1eiIvPjwvc3ZnPg==);
-                }
-                #contentAreaContextMenu:not([needsgutter]) > .flashGot > .menu-iconic-left {
-                    display: none;
-                }
-                #downloadsContextMenu:not([needsgutter]) > .downloadPlus-menuitem > .menu-iconic-left {
-                    visibility: collapse;
                 }`);
             }
 
@@ -1349,6 +1344,30 @@
                     eval("DownloadUtils.convertByteUnits = " + DU_convertByteUnits.toString());
                 }
                 if (globalDebug) DownloadPlus.log("DownloadPlus show exact size init complete.");
+            }
+        },
+    }
+
+    DownloadPlus.modules.sizeToContent = {
+        destroy(doc, win, location) {
+            const { DownloadPlus } = win;
+            if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
+                if (globalDebug) DownloadPlus.log("DownloadPlus sizeToContent destroy complete.");
+            }
+        },
+        init(doc, win, location) {
+            const { DownloadPlus } = win;
+            if (location.href.startsWith("chrome://mozapps/content/downloads/unknownContentType.x")) {
+                setTimeout(function () {
+                    win.sizeToContent();
+                }, 100);
+                setTimeout(function () {
+                    win.sizeToContent();
+                }, 300);
+                setTimeout(function () {
+                    win.sizeToContent();
+                }, 500);
+                if (globalDebug) DownloadPlus.log("DownloadPlus sizeToContent complete.");
             }
         },
     }
