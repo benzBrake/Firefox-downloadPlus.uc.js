@@ -86,7 +86,7 @@
         $L: $L,
         get appVersion() {
             delete this.appVersion;
-            return this.appVersion = Services.appinfo.version.split(".")[0];
+            return this.appVersion = parseInt(Services.appinfo.version);
         },
         get sss() {
             delete this.sss;
@@ -245,13 +245,13 @@
         init(doc, win, location, parent) {
             if (!this.STYLE_DOWNLOADS_POPUP) {
                 let maxWidth = "";
-                if (DownloadPlus.appVersion == 108) {
+                if (DownloadPlus.appVersion == 107 || DownloadPlus.appVersion == 108) {
                     maxWidth = `#unknownContentTypeWindow {
-                    	max-width: 500px;
-                	}`;
+                        max-width: 500px;
+                    }`;
                 }
                 this.STYLE_DOWNLOADS_POPUP = addStyle(`
-				${maxWidth}
+                ${maxWidth}
                 #location {
                     padding: 3px 0;
                 }
