@@ -86,7 +86,7 @@
         $L: $L,
         get appVersion() {
             delete this.appVersion;
-            return this.appVersion = parseInt(Services.appinfo.version);
+            return this.appVersion = Services.appinfo.version.split(".")[0];
         },
         get sss() {
             delete this.sss;
@@ -360,10 +360,9 @@
     }
 
     DownloadPlus.modules.removeFileMenuitem = {
-        PREF_ENABLED: 'userChromeJS.downloadPlus.enableRemoveFileFromDiskMenuitem',
+        PREF_ENABLED: 'userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem',
         init(doc, win, location) {
             const { DownloadPlus } = win;
-            if (!DownloadPlus.prefs.get("userChromeJS.downloadPlus.enableRemoveFromDiskMenuitem", true)) return;
             if (location.href.startsWith("chrome://browser/content/browser.x")) {
                 if (DownloadPlus.appVersion >= 98 && !this.hasOwnProperty('clearHistoryOnDelete')) {
                     this.clearHistoryOnDelete = DownloadPlus.prefs.get("browser.download.clearHistoryOnDelete");
