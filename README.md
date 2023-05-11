@@ -54,6 +54,23 @@ Firefox下载增强工具，依赖 userChrome.js Loader
 
 FlashGot.exe 支持调用哪些下载工具详见：[pouriap/Firefox-DownloadGrab: A Firefox addon that lets you download links with external download manager](https://github.com/pouriap/Firefox-DownloadGrab)
 
+### 下载规则(Download Rules)
+
+```javascript
+const DOWNLOAD_RULES = [
+    {
+        "url": "匹配地址，支持 * 和 ? 或者以 ^ 开头的正则表达式",
+        "operate": "操作类型 目前仅支持 save / save-as / flashgot",
+        "saveTo": "保存到的路径仅 save 操作有用",
+        “manager": "下载工具名称，进 flashgot 操作有用"
+    }
+];
+```
+
+### 如何下载 FlashGot.exe
+
+https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/download/v2023.05.11/FlashGot.exe
+
 ### 本地化(Localization)
 
 修改脚本，大概37行开始
