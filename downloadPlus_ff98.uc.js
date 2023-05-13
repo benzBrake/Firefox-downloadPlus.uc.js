@@ -48,6 +48,7 @@
             "remove from disk": "从硬盘删除",
             "operation not support": "操作不支持",
             "file not found": "文件未找到 %s",
+            "directory not exists": "目录不存在 %s",
             "use flashgot to download": "FlashGot",
             "dowload this link by flashGot": "FlashGot 下载此链接",
             "download all links by flashgot": "FlashGot 下载所有链接",
@@ -87,6 +88,10 @@
             "url": "https://*.sharepoint.com/personal/*/_layouts/*/download.aspx*",
             "operate": "flashgot",
             "manager": "Internet Download Manager",
+        },
+        {
+            "url": "https://www.btbtt15.com/attach-download-fid-*-aid-*.htm",
+            "operate": "save"
         }
     ];
 
@@ -738,10 +743,10 @@
         PREF_FLASHGOT_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotDownloadManagers',
         FLASHGOT_FILE_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         FLASHGOT_FORCE_USERAGENT: {
-            'd.pcs.baidu.com': 'netdisk;7.0.3.2;PC;PC-Windows;10.0.17763'
+
         },
         FLASHGOT_COOKIES_FILTER: {
-            'd.pcs.baidu.com': ['BDUSS']
+
         },
         FLASHGOT_NULL_REFERER: [
 
@@ -1041,6 +1046,7 @@
             } else if (target.hasAttribute("trigger")) {
                 switch (target.getAttribute("trigger")) {
                     case 'link':
+                        referer = (gContextMenu?.browser || gBrowser.selectedBrowser)._documentURI.spec;
                         downloadManager = this.DEFAULT_DOWNLOAD_MANAGER || FLASHGOT_DOWNLOAD_MANSGERS[0];
                         downloadLink = gContextMenu.linkURL;
                         downloadHost = gContextMenu.linkURI.host;
@@ -1607,63 +1613,74 @@
         autoOperate(dialog, rule) {
             switch (rule.operate) {
                 case "save":
-                    this.saveTo(dialog, rule.saveTo);
+                    this.save(dialog, rule)
                     break;
                 case "save-as":
                     this.saveAs(dialog);
                     break;
                 case "flashgot":
-                    dialog.dialogElement("flashgotDownloadByDefault") .click();
+                    dialog.dialogElement("flashgotDownloadByDefault").click();
                     break;
             }
         },
-        saveTo(dialog, aPath, aSkipPrompt = true) {
-            let aURL = dialog.mLauncher.source.spec;
-            let aFileName = dialog.mLauncher.suggestedFileName;
-            let aSourceDocument = dialog.mContext;
-            const createContentPrincipal = Services.scriptSecurityManager.createContentPrincipal || Services.scriptSecurityManager.createCodebasePrincipal;
-            const [firefoxVer, firefoxMinorVer] = Services.appinfo.version.split(".");
-            const isPrivate = dialog.mContext.PrivateBrowsingUtils.isWindowPrivate(dialog.mContext);
-            const aPrincipal = createContentPrincipal(Services.io.newURI(aURL), {});
-            let aReferrer = Services.io.newURI(aURL);
-            if (firefoxVer >= 70) {
-                let referrerInfo = Cc["@mozilla.org/referrer-info;1"].createInstance(Ci.nsIReferrerInfo);
-                referrerInfo.init(
-                    Ci.nsIHttpChannel.REFERRER_POLICY_NO_REFERRER_WHEN_DOWNGRADE,
-                    true,
-                    aReferrer
-                );
-                aReferrer = referrerInfo;
+        save(dialog, rule) {
+            let aFilename = dialog.mLauncher.suggestedFileName,
+                aURL = dialog.mLauncher.source.asciiSpec;
+            let aPath;
+            if ("saveTo" in rule) {
+                aPath = rule.saveTo;
             }
-            if (typeof aPath === "undefined") {
-                aPath = this.DEFAULT_SAVE_PATH;
-            }
+            if (!aPath) aPath = this.DEFAULT_SAVE_PATH;
 
-            let fileSaving = Cc["@mozilla.org/file/local;1"].
+            /** 创建目录 */
+            let aFile = Cc["@mozilla.org/file/local;1"].
                 createInstance(Ci.nsIFile);
-
-            fileSaving.initWithPath(aPath);
-
-            if (!fileSaving.exists()) {
-                fileSaving.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
-            }
-
-            if (!fileSaving.isDirectory()) {
-                dpUtils.alert("The download folder [%s] does not exist!".replace("%s", savePath));
+            try {
+                aFile.initWithPath(aPath);
+                if (!aFile.exists()) {
+                    aFile.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+                }
+            } catch (e) {
+                dpUtils.alert($L("directory not exists", aPath));
                 return;
             }
 
-            if (firefoxVer > 102 || (firefoxVer == 102 && firefoxMinorVer >= 3)) {
-                let cookieJarSettings = dialog.mContext.gBrowser.selectedBrowser.cookieJarSettings;
-                dialog.mContext.saveURL(aURL, null, aFileName, null, true, aSkipPrompt, aReferrer, cookieJarSettings, aSourceDocument, isPrivate, aPrincipal);
-            } else if (firefoxVer >= 84) {
-                let cookieJarSettings = dialog.mContext.gBrowser.selectedBrowser.cookieJarSettings;
-                dialog.mContext.saveURL(aURL, aFileName, null, true, aSkipPrompt, aReferrer, cookieJarSettings, aSourceDocument, isPrivate, aPrincipal);
-            } else {
-                dialog.mContext.saveURL(aURL, aFileName, null, true, aSkipPrompt, aReferrer, aSourceDocument, isPrivate, aPrincipal);
+            /** 确定一个不存在的文件名 */
+            aFile.append(aFilename);
+            while (aFile.exists()) {
+                if (newFileName.indexOf('.') != -1) {
+                    var ext = newFileName.substr(newFileName.lastIndexOf('.'));
+                    var file = newFileName.substring(0, newFileName.length - ext.length);
+                    newFileName = getAnotherName(file) + ext;
+                } else newFileName = getAnotherName(newFileName);
+
+                aFile.initWithPath(aPath);
+                aFile.append(newFileName);
+            }
+
+            /**
+             * 添加下载任务
+             */
+            let options = {
+                source: Services.io.newURI(aURL),
+                target: aFile,
+            };
+            let downloadPromise = Downloads.createDownload(options)
+            downloadPromise.then(function success(d) {
+                Downloads.getList(Downloads.ALL).then(list => list.add(d));
+                d.start();
+            });
+
+            function getAnotherName(fName) {
+                if (/\[(\d+)\]$/.test(fName)) {
+                    var i = 1 + parseInt(RegExp.$1);
+                    fName = fName.replace(/\[\d+\]$/, "[" + i + "]");
+                } else fName += "[1]";
+                return fName;
             }
         },
         saveAs(dialog) {
+            // aURL, aOriginalURL, aDocument, aDefaultFileName, aContentDisposition
             dialog.mContext.eval("(" + dialog.mContext.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, dialog.mLauncher.suggestedFileName, null, null, false, null, null, null, null, null, false, null, dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
         }
     }
