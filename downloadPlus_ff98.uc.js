@@ -1358,7 +1358,7 @@
                 if (dl.progress != 100) return;
                 if (saveAndOpen.URLS.indexOf(dl.source.url) > -1) {
                     let target = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-                    if (globalDebug) window.dpUtils.log("DownloadPlus opening: " + dl.target.path);
+                    if (globalDebug) console.log("DownloadPlus opening: " + dl.target.path);
                     target.initWithPath(dl.target.path);
                     target.launch();
                     saveAndOpen.URLS[saveAndOpen.URLS.indexOf(dl.source.url)] = "";
