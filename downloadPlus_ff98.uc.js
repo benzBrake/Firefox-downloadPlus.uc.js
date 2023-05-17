@@ -92,6 +92,12 @@
         {
             "url": "https://www.btbtt15.com/attach-download-fid-*-aid-*.htm",
             "operate": "save"
+        },
+        {
+            "url": "https://*.exe",
+            "size": "mb > 100",
+            "operate": "flashgot",
+            "manager": "Internet Download Manager",
         }
     ];
 
@@ -1599,9 +1605,21 @@
                 try {
                     dpUtils.downloadRules.forEach(rule => {
                         if (rule.regex.test(dialog.mLauncher.source.spec)) {
-                            this.autoOperate(dialog, rule);
-                            window.close();
-                            return;
+                            let flag = true;
+                            if ("size" in rule) {
+                                let statement = rule.size,
+                                    kb = Math.floor(dialog.mLauncher.contentLength / 1024),
+                                    mb = Math.floor(dialog.mLauncher.contentLength / 1048576),
+                                    gb = Math.floor(dialog.mLauncher.contentLength / 1073741824);
+                                let fn = new Function("kb", "mb", "gb", `return ${statement}`);
+                                flag = !!fn(kb, mb, gb);
+                            }
+                            if (flag) {
+                                this.autoOperate(dialog, rule);
+                                window.close();
+                                return;
+                            }
+
                         } else {
                         }
                     });
