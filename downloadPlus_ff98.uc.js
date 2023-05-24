@@ -77,28 +77,26 @@
      * 下载规则，目前仅支持 save / save-as / flashgot
      */
     const DOWNLOAD_RULES = [
-        {
-            "url": "^https:\/\/ftp\.mozilla\.org\/pub\/firefox\/releases\/.*\.exe$",
-            "saveTo": Services.dirsvc.get('Desk', Ci.nsIFile).path,
-            "operate": "save"
-        }, {
-            "url": "https://codeload.github.com/*/*/zip/refs/heads/master",
-            "operate": "save-as"
-        }, {
-            "url": "https://*.sharepoint.com/personal/*/_layouts/*/download.aspx*",
-            "operate": "flashgot",
-            "manager": "Internet Download Manager",
-        },
-        {
-            "url": "https://www.btbtt15.com/attach-download-fid-*-aid-*.htm",
-            "operate": "save"
-        },
-        {
-            "url": "https://*.exe",
-            "size": "mb > 100",
-            "operate": "flashgot",
-            "manager": "Internet Download Manager",
-        }
+        //{
+        //    "url": "^https:\/\/ftp\.mozilla\.org\/pub\/firefox\/releases\/.*\.exe$",
+        //    "saveTo": Services.dirsvc.get('Desk', Ci.nsIFile).path,
+        //    "operate": "save"
+        //}, {
+        //    "url": "https://codeload.github.com/*/*/zip/refs/heads/master",
+        //    "operate": "save-as"
+        //},
+        // 自动保存 btbtt15 的种子
+        //{
+        //    "url": "https://www.btbtt15.com/attach-download-fid-*-aid-*.htm",
+        //    "operate": "save"
+        //},
+        // 大于 100M 的 EXE 调用 Internet Download Manager 下载
+        //{
+        //    "url": "https://*.exe",
+        //    "size": "mb > 100",
+        //    "operate": "flashgot",
+        //    "manager": "Internet Download Manager",
+        //}
     ];
 
     const _LOCALE = LANG.hasOwnProperty(Services.locale.appLocaleAsBCP47) ? Services.locale.appLocaleAsBCP47 : 'zh-CN';
