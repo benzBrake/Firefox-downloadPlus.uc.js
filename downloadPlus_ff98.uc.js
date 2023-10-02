@@ -21,6 +21,7 @@
 // @note userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
 // @note userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
 // @note userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
+// @note            20231001 永久删除菜单支持 SidebarModoki 的下载管理
 // @note            20230930 Bug 1851797 - Remove nsIScriptableUnicodeConverter convertToByteArray and convertToInputStream
 // @note            20230511 快速保存列表自动读取所有盘符，支持简单的下载规则
 // @note            20220917 重构脚本
@@ -32,8 +33,9 @@
 // @include         chrome://mozapps/content/downloads/unknownContentType.xul
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xul
+// @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
-// @version         0.2.0.1
+// @version         0.2.0.2
 // @compatibility   Firefox 72
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
@@ -503,7 +505,7 @@
                 }
             }
 
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x")) {
+            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
                 let context = $("downloadsContextMenu", doc);
                 if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
                 let dom = context.insertBefore(
