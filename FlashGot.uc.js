@@ -1,13 +1,22 @@
 // ==UserScript==
 // @name            FlashGot.uc.js
-// @description     FlashGot 下载工具选择
-// @version         1.0.0
+// @long-description
+// @description
+/* FlashGot 下载工具选择
+FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.exe
+如果需要修改，请在 about:config 中新增字符串配置项 userChromeJS.downloadPlus.flashgotPath，填入相对路径即可。
+比如 \\chrome\\UserTools\\FlashGot.exe，需要使用\\替代\
+
+FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
+*/
+// @version         1.0.1
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.1 修复总是显示为英文和按钮总是在左边的问题
 // @note            1.0.0 相比 downloadPlus_ff98.uc.js 的 FlashGot 功能，新增了 FlashGot 按钮，去除了下载页面的设置默认下载器的功能
 // ==/UserScript==
 (async (css) => {
@@ -46,7 +55,9 @@
      * @returns 
      */
     const $L = function sprintf (f, ...args) {
-        let s = f; for (let a of args) s = s.replace(/%[sd]/, a); return s;
+        let s = f; 
+        if (LANG[s]) s = LANG[s];
+        for (let a of args) s = s.replace(/%[sd]/, a); return s;
     }
 
     if (location.href.startsWith("chrome://browser/content/browser.x")) {
@@ -74,7 +85,7 @@
             async init () {
                 try {
                     CustomizableUI.createWidget({
-                        id: 'Flash-Btn',
+                        id: 'FlashGot-Btn',
                         removable: true,
                         defaultArea: CustomizableUI.AREA_NAVBAR,
                         type: "custom",
@@ -82,7 +93,7 @@
                     });
                 } catch (e) { /* 防止新窗口报错 */ }
                 await this.loadDownloadManagers();
-                this.btn = CustomizableUI.getWidget('Flash-Btn').forWindow(window).node;
+                this.btn = CustomizableUI.getWidget('FlashGot-Btn').forWindow(window).node;
                 this.refreshFlashGotPopup();
                 this.createContextMenu();
                 let styleService = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
@@ -161,7 +172,14 @@
                 });
                 menu.insertBefore(item, menu.querySelector('#context-media-eme-learnmore ~ menuseparator'));
                 menu.addEventListener('popupshowing', e => {
-                    item.hidden = !gContextMenu.onLink;
+                    item.setAttribute('hidden', !gContextMenu.onLink);
+                    let node = document.querySelector('#context-media-eme-separator')?.nextElementSibling;
+                    let nums = 0;
+                    while(node.tagName !== "menuseparator") {
+                        if (!node.hidden) nums++;
+                        node = node.nextElementSibling;
+                    }
+                    document.querySelector('#context-media-eme-separator')?.setAttribute('hidden', !nums);
                 }, false);
             },
             setDefaultManager (e) {
@@ -722,5 +740,8 @@
 }
 #FlashGot-Popup menuitem:is([type="checkbox"], [type="radio"]):not([checked="true"]) > .menu-iconic-left > .menu-iconic-icon {
     display: flex;
+}
+#context-media-eme-learnmore:has(~ #FlashGot-ContextMenu[hide-eme-sep=true]) {
+    display: none !important;
 }
 `)
