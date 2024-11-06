@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.1
+// @version         1.0.2
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.2 修复弹出窗口尺寸问题，修复有时候无法显示 FlashGot 选项
 // @note            1.0.1 修复总是显示为英文和按钮总是在左边的问题
 // @note            1.0.0 相比 downloadPlus_ff98.uc.js 的 FlashGot 功能，新增了 FlashGot 按钮，去除了下载页面的设置默认下载器的功能
 // ==/UserScript==
@@ -55,7 +56,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
      * @returns 
      */
     const $L = function sprintf (f, ...args) {
-        let s = f; 
+        let s = f;
         if (LANG[s]) s = LANG[s];
         for (let a of args) s = s.replace(/%[sd]/, a); return s;
     }
@@ -175,7 +176,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     item.setAttribute('hidden', !gContextMenu.onLink);
                     let node = document.querySelector('#context-media-eme-separator')?.nextElementSibling;
                     let nums = 0;
-                    while(node.tagName !== "menuseparator") {
+                    while (node.tagName !== "menuseparator") {
                         if (!node.hidden) nums++;
                         node = node.nextElementSibling;
                     }
@@ -187,15 +188,15 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                 this.FLASHGOT_DEFAULT_MANAGER = manager;
                 Services.prefs.setStringPref(this.PREF_FLASHGOT_DEFAULT, manager);
             },
-            async loadDownloadManagers (forceLoad, notify) {
+            async loadDownloadManagers (forceReload, notify) {
                 this.FLASHGOT_DOWNLOAD_MANSGERS = [];
                 if (notify) alerts($L("reloading download managers list"));
                 if (this.FLASHGOT_PATH) {
                     try {
                         let prefVal = Services.prefs.getStringPref(this.PREF_FLASHGOT_DOWNLOAD_MANAGERS);
                         this.FLASHGOT_DOWNLOAD_MANSGERS = prefVal.split(",");
-                    } catch (e) { forceLoad = true }
-                    if (forceLoad) {
+                    } catch (e) { forceReload = true }
+                    if (forceReload) {
                         let resultPath = PathUtils.join(this.handleRelativePath("{tmpDir}\\.flashgot.dm.txt"));
                         await new Promise((resolve, reject) => {
                             // read download managers list from flashgot.exe
@@ -394,7 +395,8 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                 if (!FlashGot.FLASHGOT_PATH) return;
                 this.FlashGot = FlashGot;
                 const { dialog } = window;
-                let modeGroup = dialog.dialogElement('mode');
+                const $ = (id) => dialog.dialogElement(id);
+                let modeGroup = $('mode');
                 const createElem = (tag, attrs, children = []) => {
                     let elem = createElement(tag, attrs);
                     children.forEach(child => elem.appendChild(child));
@@ -427,10 +429,33 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                 modeGroup.appendChild(flashgotHbox);
                 this.refreshDownloadManagersPopup(flashgotHbox.querySelector('#flashgotHandler menupopup'));
 
-                const flashgotRadio = dialog.dialogElement('flashgot');
+                const flashgotRadio = $('flashgot');
                 const flashgotDefaultDownload = () => {
                     this.FlashGot.handleFlashgotEvent({ target: flashgotRadio.parentNode.querySelector('menuitem[selected="true"]') });
                 }
+
+                setTimeout(() => {
+                    $('normalBox')?.removeAttribute("collapsed");
+                    window.sizeToContent();
+                }, 10);
+
+                $('mode').addEventListener("select", function (event) {
+                    const flashGotRadio = $('flashgot');
+                    const rememberChoice = $('rememberChoice');
+                    const flashgot = $('flashgot');
+                    var other = true;
+                    if (flashGotRadio && flashGotRadio.selected) {
+                        rememberChoice.disabled = true;
+                        rememberChoice.checked = false;
+                        other = false;
+                    }
+                    if (flashgot && flashgot.selected) {
+                        other = false;
+                    }
+                    if (other) {
+                        rememberChoice.disabled = false;
+                    }
+                });
 
                 dialog.onOK = (function () {
                     var cached_function = dialog.onOK;
@@ -477,7 +502,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     const defaultManager = Services.prefs.getStringPref(this.PREF_FLASHGOT_DEFAULT);
                     defaultElement = defaultManager ? flashgotPopup.querySelector(`#dm-${hashText(defaultManager)}`) : null;
                 } catch (e) {
-                    console.error(e);
+                    // console.error(e);
                 }
                 defaultElement = defaultElement || flashgotPopup.firstChild;
 
