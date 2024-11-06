@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.2
+// @version         1.0.3
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.3 新增右键二级菜单
 // @note            1.0.2 修复弹出窗口尺寸问题，修复有时候无法显示 FlashGot 选项
 // @note            1.0.1 修复总是显示为英文和按钮总是在左边的问题
 // @note            1.0.0 相比 downloadPlus_ff98.uc.js 的 FlashGot 功能，新增了 FlashGot 按钮，去除了下载页面的设置默认下载器的功能
@@ -27,6 +28,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
     const LANG = {
         "use flashgot to download": "FlashGot",
         "download with flashgot": "使用 FlashGot 下载",
+        "download with flashgot default download manager": "使用 FlashGot 默认下载",
         "default": "（默认）",
         "download by default download manager": "FlashGot 默认",
         "no supported download manager": "没有找到 FlashGot 支持的下载工具",
@@ -162,26 +164,57 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                 }
             },
             createContextMenu () {
-                let menu = document.getElementById('contentAreaContextMenu');
-                let item = createElement('menuitem', {
-                    id: 'FlashGot-ContextMenu',
-                    label: $L("download with flashgot"),
-                    class: 'FlashGot-icon',
-                    accesskey: 'F',
-                    trigger: 'link',
-                    oncommand: e => this.handleFlashgotEvent(e)
-                });
-                menu.insertBefore(item, menu.querySelector('#context-media-eme-learnmore ~ menuseparator'));
-                menu.addEventListener('popupshowing', e => {
-                    item.setAttribute('hidden', !gContextMenu.onLink);
-                    let node = document.querySelector('#context-media-eme-separator')?.nextElementSibling;
-                    let nums = 0;
-                    while (node.tagName !== "menuseparator") {
-                        if (!node.hidden) nums++;
-                        node = node.nextElementSibling;
-                    }
-                    document.querySelector('#context-media-eme-separator')?.setAttribute('hidden', !nums);
-                }, false);
+                setTimeout(() => {
+                    let menu = document.getElementById('contentAreaContextMenu');
+                    let item = createElement('menu', {
+                        id: 'FlashGot-ContextMenu',
+                        label: $L("download with flashgot"),
+                        class: 'FlashGot-icon',
+                        accesskey: 'F',
+                        trigger: 'link',
+                        onclick: e => this.handleFlashgotEvent(e)
+                    });
+                    let popup = createElement('menupopup', {
+                        id: 'FlashGot-ContextMenu-Popup',
+                        onpopupshowing: e => {
+                            let popup = e.target;
+                            popup.querySelectorAll('menuitem[manager]').forEach(item => item.remove());
+                            popup.querySelector('menuseparator').removeAttribute('hidden');
+                            if (this.FLASHGOT_DOWNLOAD_MANSGERS.length) {
+                                this.FLASHGOT_DOWNLOAD_MANSGERS.forEach(manager => {
+                                    let item = createElement('menuitem', {
+                                        label: manager,
+                                        manager,
+                                        checked: manager == this.FLASHGOT_DEFAULT_MANAGER,
+                                        oncommand: e => this.setDefaultManager(e)
+                                    });
+                                    popup.appendChild(item);
+                                })
+                            }
+                        }
+                    });
+                    popup.appendChild(createElement('menuitem', {
+                        id: 'FlashGot-ContextMenuitem',
+                        label: $L("download with flashgot default download manager"),
+                        class: 'FlashGot-icon',
+                        accesskey: 'F',
+                        trigger: 'link',
+                        onclick: e => this.handleFlashgotEvent(e)
+                    }));
+                    popup.appendChild(createElement('menuseparator'));
+                    item.appendChild(popup);
+                    menu.insertBefore(item, menu.querySelector('#context-media-eme-learnmore ~ menuseparator'));
+                    menu.addEventListener('popupshowing', e => {
+                        item.setAttribute('hidden', !gContextMenu.onLink);
+                        let node = document.querySelector('#context-media-eme-separator')?.nextElementSibling;
+                        let nums = 0;
+                        while (node.tagName !== "menuseparator") {
+                            if (!node.hidden) nums++;
+                            node = node.nextElementSibling;
+                        }
+                        document.querySelector('#context-media-eme-separator')?.setAttribute('hidden', !nums);
+                    }, false);
+                },);
             },
             setDefaultManager (e) {
                 let manager = e.target.getAttribute('manager');
