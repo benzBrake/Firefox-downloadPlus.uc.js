@@ -1,70 +1,63 @@
 # downloadPlus.uc.js
 
-Firefox 下载增强工具，依赖 userChrome.js Loader
+**Firefox 下载增强工具**
+_依赖 userChrome.js Loader_
 
-目前最新版为`downloadPlus_ff98.uc.js`
+目前最新版为 `downloadPlus_ff98.uc.js`
 
-### 功能(Description)
+---
+
+### 功能
 
 - 默认选择下载文件
 - 改名后保存
 - 保存并打开
 - 另存为
 - 下载提示音
-- 来源显示完整目录并支持双击复制完整地址
+- 显示完整目录并支持双击复制完整地址
 - 第三方工具下载（依赖 FlashGot）
 
-### 说明(Usage)
+---
 
-`flashgot.exe`默认存放路径为
+### 说明
+
+`flashgot.exe` 默认存放路径：
 
 > ProfileDir\chrome\UserTools\FlashGot.exe
 
-高级首选项（about:config）
+#### 高级首选项（about:config）
 
-> userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
->
-> userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
->
-> userChromeJS.downloadPlus.flashgotPath Flashgot 可执行文件路径
->
-> userChromeJS.downloadPlus.flashgotManagers 下载器列表缓存（一般不需要修改)
->
-> userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
->
-> userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
->
-> userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
->
-> userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
->
-> userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
->
-> userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
->
-> userChromeJS.downloadPlus.enableDownloadNotice 启用下载通知音
->
-> userChromeJS.downloadPlus.notice.DL_START 下载开始通知音路径
->
-> userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
->
-> userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
->
-> userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
+- `userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem` — 启用从硬盘删除右键菜单
+- `userChromeJS.downloadPlus.enableFlashgotIntegration` — 启用 FlashGot 集成
+- `userChromeJS.downloadPlus.flashgotPath` — FlashGot 可执行文件路径
+- `userChromeJS.downloadPlus.flashgotManagers` — 下载器列表缓存（一般不需要修改）
+- `userChromeJS.downloadPlus.flashgotDefaultManager` — 默认第三方下载器（一般不需要修改）
+- `userChromeJS.downloadPlus.enableRename` — 启用下载对话框改名功能
+- `userChromeJS.downloadPlus.enableDoubleClickToCopyLink` — 下载对话框双击复制链接
+- `userChromeJS.downloadPlus.enableSaveAndOpen` — 下载对话框启用保存并打开
+- `userChromeJS.downloadPlus.enableSaveAs` — 下载对话框启用另存为
+- `userChromeJS.downloadPlus.enableSaveTo` — 下载对话框启用保存到
+- `userChromeJS.downloadPlus.enableDownloadNotice` — 启用下载通知音
+- `userChromeJS.downloadPlus.notice.DL_START` — 下载开始通知音路径
+- `userChromeJS.downloadPlus.notice.DL_DONE` — 下载成功通知音路径
+- `userChromeJS.downloadPlus.notice.DL_CANCEL` — 下载取消通知音
+- `userChromeJS.downloadPlus.notice.DL_FAILED` — 下载失败通知音路径
 
-FlashGot.exe 支持调用哪些下载工具详见：[pouriap/Firefox-DownloadGrab: A Firefox addon that lets you download links with external download manager](https://github.com/pouriap/Firefox-DownloadGrab)
+FlashGot 支持的下载工具列表见：[pouriap/Grabby](https://github.com/pouriap/Grabby)
 
-### 下载规则(Download Rules)
+---
+
+### 下载规则
 
 ```javascript
 const DOWNLOAD_RULES = [
-    {
-        "url": "匹配地址，支持 * 和 ? 或者以 ^ 开头的正则表达式",
-        "operate": "操作类型 目前仅支持 save / save-as / flashgot",
-        "size": "文件大小条件",
-        "saveTo": "保存到的路径仅 save 操作有用",
-        “manager": "下载工具名称，进 flashgot 操作有用"
-    }
+  {
+    url: "匹配地址，支持 * 和 ? 或者以 ^ 开头的正则表达式",
+    operate: "操作类型，支持 'save' / 'save-as' / 'flashgot'",
+    size: "文件大小条件",
+    saveTo: "保存到的路径，仅对 'save' 操作有效",
+    manager: "下载工具名称，进 FlashGot 操作有用",
+  },
 ];
 ```
 
@@ -121,4 +114,4 @@ const LANG = {
 
 ### 感谢(Thanks)
 
-[pouriap/Firefox-DownloadGrab: A Firefox addon that lets you download links with external download manager](https://github.com/pouriap/Firefox-DownloadGrab)
+[pouriap/Grabby: A browser extension for downloading files and media from websites](https://github.com/pouriap/Grabby)
