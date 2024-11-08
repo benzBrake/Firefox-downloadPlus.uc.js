@@ -448,7 +448,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                                 },
                             });
                         });
-                        await IOUtils.remove(initFilePath, { ignoreAbsent: true });
+                        // await IOUtils.remove(initFilePath, { ignoreAbsent: true });
                     })()
                 }
             },
