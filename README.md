@@ -19,6 +19,13 @@ _依赖 userChrome.js Loader_
 
 ---
 
+### 各个脚本
+
+1. **downloadPlus_ff98.uc.js** 不再解释
+2. **downloadSoundPlay_Fx26.uc.js** 下载提示音独立脚本
+3. **FlashGot.uc.js** FlashGot 联动功能独立脚本
+4. **removeFileFromDownloadManager.uc.js** 右键菜单添加永久删除文件独立脚本
+
 ### 说明
 
 `flashgot.exe` 默认存放路径：
@@ -79,11 +86,6 @@ const DOWNLOAD_RULES = [
 
 https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/download/v2023.05.11/FlashGot.exe
 
-### 其他脚本
-
-- `FlashGot.uc.js`,仅仅集成了 FlashGot 下载功能的脚本
-- `downloadSoundPlay_Fx26.uc.js`，下载完成通知脚本
-
 ### 本地化(Localization)
 
 修改脚本，大概 37 行开始
@@ -104,7 +106,7 @@ const LANG = {
 
 [ ] 从`downloadPlus_ff98.uc.js`中删除下载完成通知
 
-[ ] 永久删除文件功能独立成一个脚本
+[x] 永久删除文件功能独立成一个脚本
 
 ### 题外话(Off topic)
 

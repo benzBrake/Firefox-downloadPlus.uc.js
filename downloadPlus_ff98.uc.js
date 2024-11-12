@@ -3,7 +3,6 @@
 // @description     修改整合自（w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞），已重写代码。
 // @author          Ryan
 // @note 相关 about:config 选项 修改后请重启浏览器，不支持热重载
-// @note userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem 启用从硬盘删除右键菜单
 // @note userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
 // @note userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
 // @note userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
@@ -489,95 +488,6 @@
         destroy() {
             this.styles.forEach(style => $R(style));
         }
-    }
-
-    /**
-     * 删除文件右键菜单
-     */
-    DownloadPlus.modules.removeFileMenuitem = {
-        PREF_ENABLED: 'userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem',
-        init(doc, win, location, parent) {
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                if (dpUtils.appVersion >= 98 && !this.hasOwnProperty('clearHistoryOnDelete')) {
-                    this.clearHistoryOnDelete = dpUtils.getPref("browser.download.clearHistoryOnDelete");
-                    if (this.clearHistoryOnDelete !== "undefined")
-                        dpUtils.setPref("browser.download.clearHistoryOnDelete", 2);
-                }
-            }
-
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
-                let context = $("downloadsContextMenu", doc);
-                if (context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
-                let dom = context.insertBefore(
-                    $C(document, "menuitem", {
-                        id: 'downloadRemoveFromHistoryEnhanceMenuItem',
-                        class: 'downloadRemoveFromHistoryMenuItem downloadPlus-menuitem',
-                        label: $L("remove from disk")
-                    }),
-                    context.querySelector(".downloadRemoveFromHistoryMenuItem")
-                );
-                dom.addEventListener('click', this.action);
-            }
-        },
-        action(event) {
-            function removeSelectedFile(path) {
-                let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-                try {
-                    file.initWithPath(path);
-                } catch (e) {
-
-                }
-                if (!file.exists()) {
-                    if (/\..{0,10}(\.part)$/.test(file.path))
-                        file.initWithPath(file.path.replace(".part", ""));
-                    else
-                        file.initWithPath(file.path + ".part");
-                }
-                if (file.exists()) {
-                    file.permissions |= 0666;
-                    file.remove(0);
-                }
-            }
-
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                let aTriggerNode = DownloadsView.contextMenu.triggerNode,
-                    element = aTriggerNode.closest('.download-state'),
-                    sShell = element._shell,
-                    path = sShell.download.target.path;
-                removeSelectedFile(path);
-                sShell.doCommand("cmd_delete");
-            } else if (location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
-                var ddBox = document.getElementById("downloadsRichListBox");
-                if (!(ddBox && ddBox._placesView)) {
-                    ddBox = document.getElementById("downloadsListBox");
-                }
-                if (!ddBox) return;
-                var len = ddBox.selectedItems.length;
-
-                for (var i = len - 1; i >= 0; i--) {
-                    let sShell = ddBox.selectedItems[i]._shell;
-                    let path = sShell.download.target.path;
-                    removeSelectedFile(path);
-                    sShell.doCommand("cmd_delete");
-                }
-            } else {
-                dpUtils.error($L("operation not support"));
-            }
-        },
-        destroy(doc, win, location) {
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                if (this.hasOwnProperty('clearHistoryOnDelete')) {
-                    dpUtils.setPref("browser.download.clearHistoryOnDelete", this.clearHistoryOnDelete);
-                    delete this.clearHistoryOnDelete;
-                }
-            }
-            if (location.href.startsWith("chrome://browser/content/browser.x") || location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("about:downloads")) {
-                let context = $("downloadsContextMenu", doc),
-                    child = context.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem");
-                if (context && child)
-                    context.removeChild(child);
-            }
-        },
     }
 
     /**
