@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.4
+// @version         1.0.6
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.6 修复 Referer 获取
 // @note            1.0.5 结合 AI 优化代码
 // @note            1.0.4 修复新窗口报错
 // @note            1.0.3 新增右键二级菜单
@@ -75,7 +76,9 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
             DOWNLOAD_MANAGERS: [],
             FLASHGOT_PATH: null,
             USERAGENT_OVERRIDES: {},
-
+            REFERER_OVERRIDES: {
+                'aliyundrive.net': 'https://www.aliyundrive.com/'
+            },
             get DEFINED_PATHS () {
                 return {
                     GreD: Services.dirsvc.get("GreD", Ci.nsIFile).path,
@@ -409,12 +412,22 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                         referer = mBrowser.currentURI.spec;
                         downloadPageReferer = mContentData.referrerInfo.originalReferrer.spec
                     } else if (options.mLauncher) {
-                        const { mLauncher } = options;
+                        const { mLauncher, mSourceContext } = options;
+                        downloadPageReferer = mSourceContext.currentURI.spec;
+                        downloadPageCookies = gatherCookies(downloadPageReferer);
                         fileName = options.fileName || mLauncher.suggestedFileName;
                         try { extension = mLauncher.MIMEInfo.primaryExtension; } catch (e) { }
                     }
                     if (downloadPageReferer) {
                         downloadPageCookies = gatherCookies(downloadPageReferer);
+                    }
+                    let refMatched = domainMatch(uri.host, this.REFERER_OVERRIDES);
+                    if (refMatched) {
+                        referer = refMatched;
+                    }
+                    let uaMatched = domainMatch(uri.host, this.USERAGENT_OVERRIDES);
+                    if (uaMatched) {
+                        userAgent = uaMatched;
                     }
                     const initData = replaceArray(FLASHGOT_FILE_STRUCTURE, [
                         '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
@@ -448,8 +461,30 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                                 },
                             });
                         });
+                        // console.log(initFilePath);
                         // await IOUtils.remove(initFilePath, { ignoreAbsent: true });
                     })()
+
+                    function domainMatch (domain, domainCollections) {
+                        let isObject = typeof domainCollections === 'object', isMatch = false;
+                        if (isObject && !Array.isArray(domainCollections)) {
+                            isMatch = match(domain, Object.keys(domainCollections));
+                            if (isMatch) {
+                                return domainCollections[isMatch];
+                            }
+                            return;
+                        }
+                        return match(domain, domainCollections);
+
+                        function match (domain, domains) {
+                            for (let i = 0; i < domains.length; i++) {
+                                if (domain.endsWith(domains[i])) {
+                                    return domains[i];
+                                }
+                            }
+                            return false;
+                        }
+                    }
                 }
             },
             error: console.error,
@@ -508,10 +543,12 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     if (source.schemeIs('blob')) {
                         source = Services.io.newURI(source.spec.slice(5));
                     }
+                    let mSourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
                     this.FlashGot.download(source, {
                         manager: document.querySelector('#flashgotHandler').getAttribute('manager'),
                         fileName: document.querySelector("#locationText")?.value,
                         mLauncher,
+                        mSourceContext: mSourceContext.parent ? mSourceContext.parent : mSourceContext,
                         isPrivate: this.Top.PrivateBrowsingUtils.isWindowPrivate(window)
                     })
                     close();
