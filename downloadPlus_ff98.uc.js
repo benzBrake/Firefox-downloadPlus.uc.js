@@ -15,11 +15,7 @@
 // @note userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
 // @note userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 // @note userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
-// @note userChromeJS.downloadPlus.enableDownloadNotice 启用下载通知音
-// @note userChromeJS.downloadPlus.notice.DL_START 下载开始通知音路径
-// @note userChromeJS.downloadPlus.notice.DL_DONE 下载成功通知音路径
-// @note userChromeJS.downloadPlus.notice.DL_CANCEL 下载取消通知音
-// @note userChromeJS.downloadPlus.notice.DL_FAILED 下载失败通知音路径
+// @note            20241113 删除下载通知音功能
 // @note            20231001 永久删除菜单支持 SidebarModoki 的下载管理
 // @note            20230930 Bug 1851797 - Remove nsIScriptableUnicodeConverter convertToByteArray and convertToInputStream
 // @note            20230511 快速保存列表自动读取所有盘符，支持简单的下载规则
@@ -34,7 +30,7 @@
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xul
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
-// @version         0.2.0.2
+// @version         0.2.0.3
 // @compatibility   Firefox 72
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
@@ -1400,78 +1396,6 @@
                 if (globalDebug) dpUtils.log("DownloadPlus save to init complete.");
             }
         },
-    }
-
-    /**
-     * 下载通知
-     */
-    DownloadPlus.modules.downloadNotice = {
-        PREF_ENABLED: "userChromeJS.downloadPlus.enableDownloadNotice",
-        PREF_DL_START: "userChromeJS.downloadPlus.notice.DL_START",
-        PREF_DL_CANCEL: "userChromeJS.downloadPlus.notice.DL_CANCEL",
-        PREF_DL_DONE: "userChromeJS.downloadPlus.notice.DL_DONE",
-        PREF_DL_FAILED: "userChromeJS.downloadPlus.notice.DL_FAILED",
-        _list: null,
-        destroy(doc, win, location) {
-            const { DownloadPlus } = win;
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                if (this._list) this._list.removeView(this);
-                if (globalDebug) dpUtils.log("DownloadPlus download notice destroy complete.");
-            }
-        },
-        init(doc, win, location) {
-            this.Downloads = globalThis.Downloads || Cu.import("resource://gre/modules/Downloads.jsm").Downloads;
-            this.DL_START = dpUtils.getPref(this.PREF_DL_START, "");
-            this.DL_DONE = dpUtils.getPref(this.PREF_DL_DONE, "file:///C:/WINDOWS/Media/chimes.wav");
-            this.DL_CANCEL = dpUtils.getPref(this.PREF_DL_CANCEL, "");
-            this.DL_FAILED = dpUtils.getPref(this.PREF_DL_FAILED, "");
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                if (!this._list)
-                    this.Downloads.getList(Downloads.ALL).then(list => {
-                        this._list = list;
-                        list.addView(this).then(null, Cu.reportError);
-                    });
-                if (globalDebug) dpUtils.log("DownloadPlus download notice init complete.");
-            }
-        },
-        playSoundFile(aFilePath) {
-            if (!aFilePath)
-                return;
-            var ios = Cc["@mozilla.org/network/io-service;1"]
-                .createInstance(Ci["nsIIOService"]);
-            try {
-                var uri = ios.newURI(aFilePath, "UTF-8", null);
-            } catch (e) {
-                return;
-            }
-            var file = uri.QueryInterface(Ci.nsIFileURL).file;
-            if (!file.exists())
-                return;
-
-            this.play(uri);
-        },
-        play(aUri) {
-            var sound = Cc["@mozilla.org/sound;1"]
-                .createInstance(Ci["nsISound"]);
-            sound.play(aUri);
-        },
-        onDownloadChanged: function (aDownload) {
-            // 取消下载
-            if (aDownload.canceled && this.DL_CANCEL)
-                this.playSoundFile(this.DL_CANCEL)
-            // 下载失败
-            if (aDownload.error && this.DL_FAILED)
-                this.playSoundFile(this.DL_FAILED)
-            // 下载完成
-            if (aDownload.succeeded && this.DL_DONE) {
-                this.playSoundFile(this.DL_DONE);
-            }
-        },
-        onDownloadAdded: function (aDownload) {
-            if (this.DL_START)
-                this.playSoundFile(this.DL_START);
-        },
-        onDownloadRemoved: function (aDownload) { },
     }
 
     /**

@@ -104,7 +104,7 @@ const LANG = {
 
 [ ] 从`downloadPlus_ff98.uc.js`中删除 FlashGot 相关功能
 
-[ ] 从`downloadPlus_ff98.uc.js`中删除下载完成通知
+[x] 从`downloadPlus_ff98.uc.js`中删除下载完成通知
 
 [x] 永久删除文件功能独立成一个脚本
 
