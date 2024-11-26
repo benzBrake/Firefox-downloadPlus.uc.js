@@ -61,7 +61,8 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
 
     const ICONIC_TAGS = ['menu', 'menuitem'];
     const createElement = (doc, tag, attrs, children = []) => {
-        let elem = _uc.createElement(doc, tag, attrs);
+        let elem = doc.createElement(tag);
+        Object.keys(attrs).forEach(key => elem.setAttribute(key, attrs[key]));
         if (ICONIC_TAGS.includes(tag)) elem.classList.add(tag + '-iconic');
         children.forEach(child => elem.appendChild(child));
         return elem;
@@ -461,7 +462,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                                 },
                             });
                         });
-                        // console.log(initFilePath);
+                        console.log(initFilePath);
                         // await IOUtils.remove(initFilePath, { ignoreAbsent: true });
                     })()
 
@@ -561,11 +562,10 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     $('flashgotRadio').click();
                     download();
                 })
-
                 setTimeout(() => {
                     $('normalBox')?.removeAttribute("collapsed");
                     window.sizeToContent();
-                }, 10);
+                }, 100);
 
                 $('mode').addEventListener("select", function (event) {
                     const flashGotRadio = $('flashgotRadio');
