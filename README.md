@@ -108,6 +108,8 @@ const LANG = {
 
 [x] 永久删除文件功能独立成一个脚本
 
+[x] 制作另存为功能的独立版
+
 ### 题外话(Off topic)
 
 为什么文件名是`downloadPlus_ff98.uc.js`为什么叫这个名字？那是因为我从 Firefox 98 开始接手这个脚本的。
