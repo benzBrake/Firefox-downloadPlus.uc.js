@@ -60,8 +60,8 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
     };
 
     const ICONIC_TAGS = ['menu', 'menuitem'];
-    const createElement = (doc, tag, attrs, children = []) => {
-        let elem = doc.createElement(tag);
+    const createElement = (doc, tag, attrs = {}, children = []) => {
+        let elem = doc.createXULElement(tag);
         Object.keys(attrs).forEach(key => elem.setAttribute(key, attrs[key]));
         if (ICONIC_TAGS.includes(tag)) elem.classList.add(tag + '-iconic');
         children.forEach(child => elem.appendChild(child));
@@ -547,7 +547,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     let mSourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
                     this.FlashGot.download(source, {
                         manager: document.querySelector('#flashgotHandler').getAttribute('manager'),
-                        fileName: document.querySelector("#locationText")?.value,
+                        fileName: document.querySelector("#locationText")?.value || dialog.mLauncher.suggestedFileName,
                         mLauncher,
                         mSourceContext: mSourceContext.parent ? mSourceContext.parent : mSourceContext,
                         isPrivate: this.Top.PrivateBrowsingUtils.isWindowPrivate(window)
