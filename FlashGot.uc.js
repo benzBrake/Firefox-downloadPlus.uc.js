@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.6
+// @version         1.0.7
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.7 Remove Cu.import, per Bug 1881888
 // @note            1.0.6 修复 Referer 获取
 // @note            1.0.5 结合 AI 优化代码
 // @note            1.0.4 修复新窗口报错
@@ -25,8 +26,8 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
 // @note            1.0.0 相比 downloadPlus_ff98.uc.js 的 FlashGot 功能，新增了 FlashGot 按钮，去除了下载页面的设置默认下载器的功能
 // ==/UserScript==
 (async (css) => {
-    const CustomizableUI = globalThis.CustomizableUI || Cu.import("resource:///modules/CustomizableUI.jsm").CustomizableUI;
-    const Services = globalThis.Services || Cu.import("resource://gre/modules/Services.jsm").Services;
+    const CustomizableUI = globalThis.CustomizableUI || ChromeUtils.importESModule("resource:///modules/CustomizableUI.sys.mjs").CustomizableUI;
+    const Services = globalThis.Services;
 
     const LANG = {
         "flashgot-btn": "FlashGot",
