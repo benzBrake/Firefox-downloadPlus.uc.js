@@ -3,7 +3,7 @@
 **Firefox 下载增强工具**
 _依赖 userChrome.js Loader_
 
-目前最新版为 `downloadPlus_ff98.uc.js`
+目前最新版为 `downloadPlus_Fx136.uc.js`
 
 ---
 
@@ -21,10 +21,11 @@ _依赖 userChrome.js Loader_
 
 ### 各个脚本
 
-1. **downloadPlus_ff98.uc.js** 不再解释
-2. **downloadSoundPlay_Fx26.uc.js** 下载提示音独立脚本
-3. **FlashGot.uc.js** FlashGot 联动功能独立脚本
-4. **removeFileFromDownloadManager.uc.js** 右键菜单添加永久删除文件独立脚本
+1. **downloadPlus_Fx136.uc.js** 不再解释
+2. **downloadPlus_ff98.uc.js** 老版本，Firefox 136+ 无法使用
+3. **downloadSoundPlay_Fx26.uc.js** 下载提示音独立脚本
+4. **FlashGot.uc.js** FlashGot 联动功能独立脚本
+5. **removeFileFromDownloadManager.uc.js** 右键菜单添加永久删除文件独立脚本
 
 ### 说明
 
@@ -96,13 +97,11 @@ const LANG = {
 
 ### 截图(Sceenshot)
 
-![downloadPlus](downloadPlus_ff98.png)
+![downloadPlus](downloadPlus_Fx136.png)
 
 ### 计划
 
 [x] 制作独立版 FlashGot 脚本
-
-[ ] 从`downloadPlus_ff98.uc.js`中删除 FlashGot 相关功能
 
 [x] 从`downloadPlus_ff98.uc.js`中删除下载完成通知
 
