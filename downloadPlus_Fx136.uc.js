@@ -63,6 +63,7 @@
             "save as": "另存为",
             "quick save to": "快速保存到：",
             "desktop": "桌面",
+            "downloads folder": "下载",
             "disk %s": "%s 盘",
         },
         format (...args) {
@@ -148,7 +149,9 @@
     LANG.init();
 
     window.DownloadPlus = {
-        SAVE_DIRS: [[Services.dirsvc.get('Desk', Ci.nsIFile).path, LANG.format("desktop")]],
+        SAVE_DIRS: [[Services.dirsvc.get('Desk', Ci.nsIFile).path, LANG.format("desktop")], [
+            Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path, LANG.format("downloads folder")
+        ]],
         init: async function () {
             const documentURI = location.href.replace(/\?.*$/, '');
             switch (documentURI) {
