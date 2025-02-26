@@ -1,35 +1,39 @@
 // ==UserScript==
 // @name            DownloadPlus_Fx135.uc.js
-// @description     修改整合自（w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞），已重写代码。
 // @author          Ryan
-// @note 相关 about:config 选项 修改后请重启浏览器，不支持热重载
-// @note userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
-// @note userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
-// @note userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
-// @note userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
-// @note userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
-// @note userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换，如果userChromeJS.downloadPlus.enableRename没开启，这个选项无效
-// @note userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
-// @note userChromeJS.downloadPlus.enableDoubleClickToOpen 双击打开
-// @note userChromeJS.downloadPlus.enableDoubleClickToSave 双击保存
-// @note userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
-// @note userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
-// @note userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
+// @long-description
+// @description
+/* 下载增强脚本，修改整合自（w13998686967、ywzhaiqi、黒仪大螃蟹、Alice0775、紫云飞），已重写代码。
+相关 about:config 选项 修改后请重启浏览器，不支持热重载
+userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
+userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
+FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
+比如 \\chrome\\UserTools\\FlashGot.exe，需要使用\\替代\
+userChromeJS.downloadPlus.flashgotDownloadManagers 下载器列表缓存（一般不需要修改)
+userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一般不需要修改）
+userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
+userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换，如果userChromeJS.lus.enableRename没开启，这个选项无效
+userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
+userChromeJS.downloadPlus.enableDoubleClickToOpen 双击打开
+userChromeJS.downloadPlus.enableDoubleClickToSave 双击保存
+userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
+userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
+userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
-// @note            20250226 正式进入无 JSM 时代，暂时未实现 FlashGot 集成，请使用独立版 FlashGot.uc.js，永久删除文件功能也并未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
-// @async           true
+*/
+// @note            20250226 正式进入无 JSM 时代，永久删除文件功能未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
 // @include         main
 // @include         chrome://browser/content/places/places.xhtml
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
-// @version         1.0.1
+// @version         1.0.2
 // @compatibility   Firefox 136
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
 (async function (gloalCSS, placesCSS, unknownContentCSS) {
-    if (window.DownloadPlus) return;
+
     let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
     const Services = globalThis.Services;
     const Downloads = globalThis.Downloads || ChromeUtils.importESModule("resource://gre/modules/Downloads.sys.mjs").Downloads;
@@ -37,14 +41,16 @@
 
     const LANG = {
         'zh-CN': {
-            "remove from disk": "从硬盘删除",
-            "operation not support": "操作不支持",
-            "file not found": "文件未找到 %s",
-            "directory not exists": "目录不存在 %s",
-            "use flashgot to download": "FlashGot",
-            "dowload this link by flashGot": "FlashGot 下载此链接",
-            "download all links by flashgot": "FlashGot 下载所有链接",
-            "about download plus": "关于 downloadPlus",
+            "download plus btn": "DownloadPlus",
+            "download enhance click to switch default download manager": "下载增强，点击可切换默认下载工具",
+            "force reload download managers list": "刷新下载工具",
+            "reload download managers list finish": "读取FlashGot 支持的下载工具完成，请选择你喜欢的下载工具",
+            "download through flashgot": "使用 FlashGot 下载",
+            "download by default download manager": "使用默认工具下载",
+            "no supported download manager": "没有找到 FlashGot 支持的下载工具",
+            "default download manager": "%s（默认）",
+            "file not found": "文件不存在：%s",
+            "about download plus": "关于 DownloadPlus",
             "original name": "默认编码: ",
             "encoding convert tooltip": "点击转换编码",
             "complete link": "链接：",
@@ -52,8 +58,6 @@
             "copied": "复制完成",
             "dobule click to copy link": "双击复制链接",
             "successly copied": "复制成功",
-            "default download manager": "（默认）",
-            "download by default download manager": "FlashGot 默认",
             "no download managers": "没有下载工具",
             "force reload download managers list": "重新读取下载工具列表",
             "reloading download managers list": "正在重新读取下载工具列表，请稍后！",
@@ -148,15 +152,49 @@
 
     LANG.init();
 
+    const FLASHGOT_OUTPUT_ENCODING = (() => {
+        switch (Services.locale.appLocaleAsBCP47) {
+            case 'zh-CN': return 'GBK';
+            case 'zh-TW':
+            case 'zh-HK': return 'BIG5';
+            default: return 'UTF-8';
+        }
+    })();
+
+    /* Do not change below 不懂不要改下边的 */
+    if (window.DownloadPlus) return;
     window.DownloadPlus = {
+        PREF_FLASHGOT_PATH: 'userChromeJS.downloadPlus.flashgotPath',
+        PREF_DEFAULT_MANAGER: 'userChromeJS.downloadPlus.flashgotDefaultManager',
+        PREF_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotDownloadManagers',
         SAVE_DIRS: [[Services.dirsvc.get('Desk', Ci.nsIFile).path, LANG.format("desktop")], [
             Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path, LANG.format("downloads folder")
         ]],
+        DOWNLOAD_MANAGERS: [],
+        DL_FILE_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
+        USERAGENT_OVERRIDES: {},
+        REFERER_OVERRIDES: {
+            'aliyundrive.net': 'https://www.aliyundrive.com/'
+        },
+        get FLASHGOT_PATH () {
+            delete this.FLASHGOT_PATH;
+            let flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT_PATH, "\\chrome\\UserTools\\FlashGot.exe");
+            flashgotPref = handlePath(flashgotPref);
+            const flashgotFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
+            flashgotFile.initWithPath(flashgotPref);
+            return this.FLASHGOT_PATH = flashgotFile.exists() ? flashgotFile.path : false;
+        },
+        get DEFAULT_MANAGER () {
+            return Services.prefs.getStringPref(this.PREF_DEFAULT_MANAGER, '');
+        },
+        set DEFAULT_MANAGER (value) {
+            Services.prefs.setStringPref(this.PREF_DEFAULT_MANAGER, value);
+        },
         init: async function () {
             const documentURI = location.href.replace(/\?.*$/, '');
             switch (documentURI) {
                 case 'chrome://browser/content/browser.xhtml':
-                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(gloalCSS), windowUtils.USER_SHEET);
+                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(gloalCSS), windowUtils.AUTHOR_SHEET);
                     await this.initChrome();
                     break;
                 case 'about:downloads':
@@ -231,6 +269,48 @@
                 getAllDrives().forEach(drive => {
                     this.SAVE_DIRS.push([drive, LANG.format("disk %s", drive.replace(':\\', ""))])
                 });
+            }
+            if (isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention')) {
+                if (!this.FLASHGOT_PATH) return; // flashgot.exe not found
+                this.reloadSupportedManagers();
+                try {
+                    CustomizableUI.createWidget({
+                        id: 'DownloadPlus-Btn',
+                        removable: true,
+                        defaultArea: CustomizableUI.AREA_NAVBAR,
+                        type: "custom",
+                        onBuild: doc => {
+                            const btn = createEl(doc, 'toolbarbutton', {
+                                id: 'DownloadPlus-Btn',
+                                label: LANG.format('download plus btn'),
+                                tooltiptext: LANG.format('download enhance click to switch default download manager'),
+                                type: 'menu',
+                                class: 'toolbarbutton-1 chromeclass-toolbar-additional FlashGot-icon',
+                            });
+                            btn.appendChild(this.populateMenu(doc, {
+                                id: 'DownloadPlus-Btn-Popup',
+                            }));
+                            this.handleEvent({ type: "aftercustomization" });
+                            window.addEventListener("aftercustomization", this, false);
+                            return btn;
+                        }
+                    });
+                } catch (e) { }
+                const contextMenu = $('#contentAreaContextMenu');
+                contextMenu.addEventListener('popupshowing', this, false);
+                const downloadPlusMenu = createEl(document, 'menu', {
+                    id: 'DownloadPlus-ContextMenu',
+                    label: LANG.format("download through flashgot"),
+                    class: 'FlashGot-icon menu-iconic',
+                    accesskey: 'F',
+                    onclick: function (event) {
+                        event.target.querySelector("#DownloadPlus-ContextMenuitem")?.doCommand()
+                    }
+                });
+                downloadPlusMenu.appendChild(this.populateMenu(document, {
+                    id: 'DownloadPlus-ContextMenu-Popup',
+                }));
+                contextMenu.insertBefore(downloadPlusMenu, contextMenu.querySelector('#context-media-eme-learnmore ~ menuseparator'));
             }
         },
         initDownloadPopup: async function () {
@@ -327,10 +407,97 @@
             }
             // 双击保存
             if (isTrue('userChromeJS.downloadPlus.enableDoubleClickToSave')) {
+
                 $('#save').addEventListener('dblclick', (event) => {
                     const { dialog } = event.target.ownerGlobal;
                     dialog.dialogElement('unknownContentType').getButton("accept").click();
                 });
+            }
+            // 调用 FlashGot
+            if (isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention')) {
+                const bw = Services.wm.getMostRecentWindow("navigator:browser");
+                const { DownloadPlus: fdp } = bw;
+                if (fdp.FLASHGOT_PATH, fdp.DOWNLOAD_MANAGERS.length) {
+                    const createElem = (tag, attrs, children = []) => {
+                        let elem = createEl(document, tag, attrs);
+                        children.forEach(child => elem.appendChild(child));
+                        return elem;
+                    };
+
+                    const triggerDownload = _ => {
+                        const { mLauncher, mContext } = dialog;
+                        let { source } = mLauncher;
+                        if (source.schemeIs('blob')) {
+                            source = Services.io.newURI(source.spec.slice(5));
+                        }
+                        let mSourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
+                        fdp.downloadByManager($('#flashgotHandler').getAttribute('manager'), source.spec, {
+                            fileName: document.querySelector("#locationText")?.value || dialog.mLauncher.suggestedFileName,
+                            mLauncher,
+                            mSourceContext: mSourceContext.parent ? mSourceContext.parent : mSourceContext,
+                            isPrivate: bw.PrivateBrowsingUtils.isWindowPrivate(window)
+                        })
+                        close();
+                    };
+
+                    // 创建 FlashGot 选项
+                    let flashgotHbox = createElem('hbox', { id: 'flashgotBox' }, [
+                        createElem('radio', {
+                            id: 'flashgotRadio', label: LANG.format("download through flashgot"), accesskey: 'F',
+                            ondblclick: () => {
+                                triggerDownload();
+                            }
+                        }),
+                        createElem('deck', { id: 'flashgotDeck', flex: 1 }, [
+                            createElem('hbox', { flex: 1, align: 'center' }, [
+                                createElem('menulist', { id: 'flashgotHandler', label: LANG.format('default download manager', fdp.DEFAULT_MANAGER), manager: fdp.DEFAULT_MANAGER, flex: 1, native: true }, [
+                                    (() => {
+                                        let menupopup = createEl(document, 'menupopup', {
+                                            id: 'DownloadPlus-Flashgot-Handler-Popup',
+                                        });
+                                        menupopup.addEventListener('popupshowing', this, false);
+                                        return menupopup;
+                                    })()
+                                ]),
+                                createElem('toolbarbutton', {
+                                    id: 'Flashgot-Download-By-Default-Manager',
+                                    tooltiptext: LANG.format("download through flashgot"),
+                                    class: "toolbarbutton-1",
+                                    accesskey: "D",
+                                    image: 'chrome://browser/skin/downloads/downloads.svg',
+                                    oncommand: () => {
+                                        $('#flashgotRadio').click();
+                                        triggerDownload();
+                                    }
+                                })
+                            ])
+                        ])
+                    ]);
+
+                    $('#mode').addEventListener("select", (event) => {
+                        const flashGotRadio = $('#flashgotRadio');
+                        const rememberChoice = $('#rememberChoice');
+                        if (flashGotRadio && flashGotRadio.selected) {
+                            rememberChoice.disabled = true;
+                            rememberChoice.checked = false;
+                            other = false;
+                        } else {
+                            rememberChoice.disabled = false;
+                        }
+                    });
+
+                    $('#mode').appendChild(flashgotHbox);
+
+                    dialog.onOK = (() => {
+                        var cached_function = dialog.onOK;
+                        return function () {
+                            if ($('#flashgotRadio').selected)
+                                return triggerDownload();
+                            else
+                                return cached_function.apply(this, arguments);
+                        };
+                    })();
+                }
             }
             // 保存并打开
             if (isTrue('userChromeJS.downloadPlus.enableSaveAndOpen')) {
@@ -409,58 +576,316 @@
                 document.getElementById("normalBox").after(quickSave);
             }
             setTimeout(() => {
+                // 强制显示打开/保存/FlashGot选项
                 document.getElementById("normalBox").removeAttribute("collapsed");
                 window.sizeToContent();
             }, 100);
         },
-        exec: async function (path, arg, options) {
+        handleEvent: async function (event) {
+            const { button, type, target } = event;
+            if (type === 'popupshowing') {
+                if (target.id === "DownloadPlus-Btn-Popup" || target.id === "DownloadPlus-ContextMenu-Popup") {
+                    this.populateDynamicItems(target);
+                } else if (target.id === "DownloadPlus-Flashgot-Handler-Popup") {
+                    let dropdown = event.target;
+                    let bw = Services.wm.getMostRecentWindow("navigator:browser");
+                    dropdown.querySelectorAll('menuitem[manager]').forEach(e => e.remove());
+                    bw.DownloadPlus.DOWNLOAD_MANAGERS.forEach(manager => {
+                        const menuitemManager = createEl(dropdown.ownerDocument, 'menuitem', {
+                            label: this.DEFAULT_MANAGER === manager ? LANG.format('default download manager', manager) : manager,
+                            manager,
+                            default: this.DEFAULT_MANAGER === manager
+                        });
+                        menuitemManager.addEventListener('command', (event) => {
+                            const { target } = event;
+                            const { ownerDocument: aDoc } = target;
+                            const handler = aDoc.querySelector("#flashgotHandler");
+                            target.parentNode.querySelectorAll("menuitem").forEach(el => el.removeAttribute("selected"));
+                            handler.setAttribute("label",
+                                target.getAttribute("default") === "true" ? LANG.format('default download manager', target.getAttribute("manager")) : target.getAttribute("manager"));
+                            handler.setAttribute("manager", target.getAttribute("manager"));
+                            target.setAttribute("selected", true);
+                            aDoc.querySelector("#flashgotRadio").click();
+                        })
+                        dropdown.appendChild(menuitemManager);
+                    })
+                }
+            } else if (type === "aftercustomization") {
+                const btn = $('#DownloadPlus-Btn');
+                if (!btn) return;
+                const mp = btn.querySelector("#DownloadPlus-Btn-Popup");
+                if (!mp) return;
+                // 获取按钮的位置信息
+                const rect = btn.getBoundingClientRect();
+                // 获取窗口的宽度和高度
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+
+                const x = rect.left + rect.width / 2;  // 按钮的水平中心点
+                const y = rect.top + rect.height / 2;  // 按钮的垂直中心点
+
+                if (x < windowWidth / 2 && y < windowHeight / 2) {
+                    mp.removeAttribute("position");
+                } else if (x >= windowWidth / 2 && y < windowHeight / 2) {
+                    mp.setAttribute("position", "after_end");
+                } else if (x >= windowWidth / 2 && y >= windowHeight / 2) {
+                    mp.setAttribute("position", "before_end");
+                } else {
+                    mp.setAttribute("position", "before_start");
+                }
+            }
+        },
+        populateMenu (doc, menuObj) {
+            const popup = createEl(doc, 'menupopup', menuObj);
+            if (menuObj.id === 'DownloadPlus-ContextMenu-Popup') {
+                popup.appendChild(createEl(doc, 'menuitem', {
+                    label: LANG.format('download by default download manager'),
+                    id: 'DownloadPlus-ContextMenuitem',
+                    class: 'FlashGot-icon menuitem-iconic',
+                    oncommand: () => {
+                        this.downloadByManager();
+                    }
+                }));
+            } else {
+                popup.appendChild(createEl(doc, 'menuitem', {
+                    label: LANG.format('force reload download managers list'),
+                    id: 'FlashGot-reload',
+                    class: 'FlashGot-reload menuitem-iconic',
+                    oncommand: () => {
+                        this.reloadSupportedManagers(true, true, () => {
+                            $('#DownloadPlus-ContextMenu-Popup')?.removeAttribute("initialized");
+                            $('#DownloadPlus-Btn-Popup')?.removeAttribute("initialized");
+                        });
+                    }
+                }));
+            }
+            popup.appendChild(createEl(doc, 'menuseparator', {
+            }));
+            popup.appendChild(createEl(doc, 'menuseparator', {
+                id: 'FlashGot-DownloadManagers-Separator'
+            }));
+            popup.appendChild(createEl(doc, 'menuitem', {
+                label: LANG.format('about download plus'),
+                id: 'FlashGot-about',
+                class: 'FlashGot-about menuitem-iconic',
+                oncommand: function () {
+                    openTrustedLinkIn("https://github.com/benzBrake/Firefox-downloadPlus.uc.js", "tab");
+                }
+            }));
+            popup.addEventListener('popupshowing', this, false);
+            return popup;
+        },
+        populateDynamicItems (popup) {
+            if (popup.hasAttribute("initialized")) return;
+            popup.setAttribute("initialized", true);
+            popup.querySelectorAll('menuitem[dynamic]').forEach(item => item.remove());
+            const sep = popup.querySelector("#FlashGot-DownloadManagers-Separator")
+            for (let name of this.DOWNLOAD_MANAGERS) {
+                if (name.trim() === '') continue;
+                let obj = {
+                    label: name,
+                    managerId: name.trim().replace(/\s+/g, '-'),
+                    dynamic: true,
+                };
+                if (popup.id === "DownloadPlus-Btn-Popup") {
+                    obj.type = 'radio';
+                    obj.oncommand = () => {
+                        this.DEFAULT_MANAGER = name;
+                    }
+                    obj.checked = this.isManagerEnabled(name);
+                } else if (popup.id === "DownloadPlus-ContextMenu-Popup") {
+                    obj.oncommand = () => {
+                        this.downloadByManager(name);
+                    }
+                    obj.class = 'downloader-item menuitem-iconic';
+                }
+                let item = createEl(popup.ownerDocument, 'menuitem', obj);
+                popup.insertBefore(item, sep);
+            }
+            if (!popup.querySelector("menuitem[dynamic]")) popup.removeAttribute("initialized");
+        },
+        isManagerEnabled (name) {
+            return this.DEFAULT_MANAGER === name;
+        },
+        exec: async function (path, args, options = { startHidden: false }) {
+            switch (typeof args) {
+                case 'string':
+                    args = args.split(/\s+/);
+                case 'object':
+                    if (Array.isArray(args)) break;
+                default:
+                    args = [];
+            }
             let file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
             let process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+            if (options.startHidden) process.startHidden = true;
             try {
-                let a;
-                if (typeof arg == "undefined") arg = []; // fix slice error
-                if (typeof arg == 'string' || arg instanceof String) {
-                    a = arg.split(/\s+/)
-                } else if (Array.isArray(arg)) {
-                    a = arg;
-                } else {
-                    a = [arg];
-                }
                 file.initWithPath(path);
                 if (!file.exists()) {
-                    this.alerts(LANG.format("file not found", path), "error");
-                    throw new Error(LANG.format("file not found", path));
+                    alerts(LANG.format("file not found", path), "error");
+                    return;
                 }
 
-                if (!file.isDirectory() && file.isExecutable()) {
+                if (file.isExecutable()) {
                     process.init(file);
-                    process.runw(false, a, a.length);
+                    if (typeof options.processObserver === "object") {
+                        process.runwAsync(args, args.length, options.processObserver);
+                    } else {
+                        process.runw(false, args, args.length);
+                    }
+
                 } else {
                     file.launch();
                 }
             } catch (e) {
-                console.error(e);
+                console.error("Execution error:", e);
             }
         },
-        /**
-         * 弹出右下角提示
-         * 
-         * @param {string} aMsg 提示信息
-         * @param {string} aTitle 提示标题
-         * @param {Function} aCallback 提示回调，可以不提供
-         */
-        alerts (aMsg, aTitle, aCallback) {
-            var callback = aCallback ? {
-                observe: function (subject, topic, data) {
-                    if ("alertclickcallback" != topic)
-                        return;
-                    aCallback.call(null);
+        reloadSupportedManagers: async function (force = false, alert = false, callback) {
+            try {
+                let prefVal = Services.prefs.getStringPref('userChromeJS.downloadPlus.flashgotDownloadManagers');
+                this.DOWNLOAD_MANAGERS = prefVal.split(",");
+            } catch (e) { force = true }
+            if (force) {
+                const resultPath = handlePath('{TmpD}\\.flashgot.dm.' + Math.random().toString(36).slice(2) + '.txt');
+                await new Promise((resolve, reject) => {
+                    // read download managers list from flashgot.exe
+                    this.exec(this.FLASHGOT_PATH, ["-o", resultPath], {
+                        processObserver: {
+                            observe (subject, topic) {
+                                switch (topic) {
+                                    case "process-finished":
+                                        try {
+                                            // Wait 1s after process to resolve
+                                            setTimeout(resolve, 1000);
+                                        } catch (ex) {
+                                            reject(ex);
+                                        }
+                                        break;
+                                    default:
+                                        reject(topic);
+                                        break;
+                                }
+                            }
+                        },
+                    });
+                });
+                let resultString = readText(resultPath, FLASHGOT_OUTPUT_ENCODING);
+                this.DOWNLOAD_MANAGERS = resultString.split("\n").filter(l => l.includes("|OK")).map(l => l.replace("|OK", ""));
+                await IOUtils.remove(resultPath, { ignoreAbsent: true });
+                Services.prefs.setStringPref(this.PREF_DOWNLOAD_MANAGERS, this.DOWNLOAD_MANAGERS.join(","));
+            }
+            if (alert) {
+                alerts(LANG.format("reload download managers list finish"));
+            }
+            if (typeof callback === "function") {
+                callback(this);
+            }
+        },
+        downloadByManager: async function (manager, url, options = {}) {
+            if (!manager) {
+                manager = this.DEFAULT_MANAGER;
+            }
+            if (!url) {
+                if (gContextMenu) {
+                    if (gContextMenu.onLink) {
+                        url = gContextMenu.linkURL;
+                    } else if (gContextMenu.isTextSelected && gContextMenu.onPlainTextLink) {
+                        try {
+                            let URI = Services.uriFixup.getFixupURIInfo(gContextMenu.selectedText).fixedURI;
+                            url = URI.spec;
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }
+                } else {
+                    url = gBrowser.selectedBrowser.currentURI.spec;
                 }
-            } : null;
-            var alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
-            alertsService.showAlertNotification(
-                this.appVersion >= 78 ? "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTIgMjJDNi40NzcgMjIgMiAxNy41MjMgMiAxMlM2LjQ3NyAyIDEyIDJzMTAgNC40NzcgMTAgMTAtNC40NzcgMTAtMTAgMTB6bTAtMmE4IDggMCAxIDAgMC0xNiA4IDggMCAwIDAgMCAxNnpNMTEgN2gydjJoLTJWN3ptMCA0aDJ2NmgtMnYtNnoiLz48L3N2Zz4=" : "chrome://global/skin/icons/information-32.png", aTitle || "DownloadPlus",
-                aMsg + "", !!callback, "", callback);
+            }
+            if (!url) return;
+            const uri = Services.io.newURI(url);
+            const { FLASHGOT_PATH, DL_FILE_STRUCTURE, REFERER_OVERRIDES, USERAGENT_OVERRIDES } = this;
+            const { description, mBrowser, isPrivate } = options;
+            const userAgent = (function (o, u, m, c) {
+                for (let d of Object.keys(o)) {
+                    // need to implement regex / subdomain process
+                    if (u.host.endsWith(d)) return o[d];
+                }
+                return m?.browsingContext?.customUserAgent || c["@mozilla.org/network/protocol;1?name=http"].getService(Ci.nsIHttpProtocolHandler).userAgent;
+            })(USERAGENT_OVERRIDES, uri, mBrowser, Cc);
+            let referer = '', postData = '', fileName = '', extension = '', downloadPageReferer = '', downloadPageCookies = '';
+            if (options.mBrowser) {
+                const { mBrowser, mContentData } = options;
+                referer = mBrowser.currentURI.spec;
+                downloadPageReferer = mContentData.referrerInfo.originalReferrer.spec
+            } else if (options.mLauncher) {
+                const { mLauncher, mSourceContext } = options;
+                downloadPageReferer = mSourceContext.currentURI.spec;
+                downloadPageCookies = gatherCookies(downloadPageReferer);
+                fileName = options.fileName || mLauncher.suggestedFileName;
+                try { extension = mLauncher.MIMEInfo.primaryExtension; } catch (e) { }
+            }
+            if (downloadPageReferer) {
+                downloadPageCookies = gatherCookies(downloadPageReferer);
+            }
+            let refMatched = domainMatch(uri.host, REFERER_OVERRIDES);
+            if (refMatched) {
+                referer = refMatched;
+            }
+            let uaMatched = domainMatch(uri.host, USERAGENT_OVERRIDES);
+            if (uaMatched) {
+                userAgent = uaMatched;
+            }
+            const initData = replaceArray(DL_FILE_STRUCTURE, [
+                '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
+                '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
+            ], [
+                1, manager, isPrivate, referer, uri.spec, description || '', gatherCookies(uri.spec), postData,
+                fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
+            ]);
+            const initFilePath = handlePath(`{TmpD}\\${hashText(uri.spec)}.dl.properties`);
+            await IOUtils.writeUTF8(initFilePath, initData);
+            await new Promise((resolve, reject) => {
+                this.exec(FLASHGOT_PATH, initFilePath, {
+                    processObserver: {
+                        observe (subject, topic) {
+                            switch (topic) {
+                                case "process-finished":
+                                    try {
+                                        // Wait 1s after process to resolve
+                                        setTimeout(resolve, 1000);
+                                    } catch (ex) {
+                                        reject(ex);
+                                    }
+                                    break;
+                                default:
+                                    reject(topic);
+                                    break;
+                            }
+                        }
+                    },
+                });
+            });
+            function domainMatch (domain, domainCollections) {
+                let isObject = typeof domainCollections === 'object', isMatch = false;
+                if (isObject && !Array.isArray(domainCollections)) {
+                    isMatch = match(domain, Object.keys(domainCollections));
+                    if (isMatch) {
+                        return domainCollections[isMatch];
+                    }
+                    return;
+                }
+                return match(domain, domainCollections);
+
+                function match (domain, domains) {
+                    for (let i = 0; i < domains.length; i++) {
+                        if (domain.endsWith(domains[i])) {
+                            return domains[i];
+                        }
+                    }
+                    return false;
+                }
+            }
         }
     }
     function isTrue (pref, defaultValue = true) {
@@ -517,15 +942,224 @@
         }
         return el;
     }
-
     function copyText (aText) {
         Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(aText);
     }
 
+    function readText (aFileOrPath, encoding = "UTF-8") {
+        encoding || (encoding = "UTF-8");
+        var aFile;
+        if (typeof aFileOrPath == "string") {
+            aFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);;
+            aFile.initWithPath(aFileOrPath);
+        } else {
+            aFile = aFileOrPath;
+        }
+        if (aFile.exists()) {
+            let stream = Cc['@mozilla.org/network/file-input-stream;1'].createInstance(Ci.nsIFileInputStream);
+            stream.init(aFile, 0x01, 0, 0);
+            let cvstream = Cc['@mozilla.org/intl/converter-input-stream;1'].createInstance(Ci.nsIConverterInputStream);
+            cvstream.init(stream, encoding, 1024, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
+            let content = '',
+                data = {};
+            while (cvstream.readString(4096, data)) {
+                content += data.value;
+            }
+            cvstream.close();
+            return content.replace(/\r\n?/g, '\n');
+        } else {
+            return "";
+        }
+    }
+
+    /**
+     * 弹出右下角提示
+     * 
+     * @param {string} aMsg 提示信息
+     * @param {string} aTitle 提示标题
+     * @param {Function} aCallback 提示回调，可以不提供
+     */
+    function alerts (aMsg, aTitle, aCallback) {
+        var callback = aCallback ? {
+            observe: function (subject, topic, data) {
+                if ("alertclickcallback" != topic)
+                    return;
+                aCallback.call(null);
+            }
+        } : null;
+        var alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
+        alertsService.showAlertNotification(
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTIgMjJDNi40NzcgMjIgMiAxNy41MjMgMiAxMlM2LjQ3NyAyIDEyIDJzMTAgNC40NzcgMTAgMTAtNC40NzcgMTAtMTAgMTB6bTAtMmE4IDggMCAxIDAgMC0xNiA4IDggMCAwIDAgMCAxNnpNMTEgN2gydjJoLTJWN3ptMCA0aDJ2NmgtMnYtNnoiLz48L3N2Zz4=", aTitle || "DownloadPlus",
+            aMsg + "", !!callback, "", callback);
+    }
+
+    function handlePath (path) {
+        if (typeof path !== "string")
+            throw new Error("Path must be a string");
+        path = path.replace(/{\w*}/g, function (...matches) {
+            let match = matches[0];
+            try {
+                return Services.dirsvc.get(match.slice(1, -1), Ci.nsIFile).path;
+            } catch (e) {
+                throw new Error("Invalid path variable: " + match);
+            }
+        });
+        if (AppConstants.platform === "win") {
+            path = path.replace(/\//g, "\\");
+            if (path.startsWith("\\")) {
+                let f = Services.dirsvc.get("ProfD", Ci.nsIFile);
+                f.appendRelativePath(path.slice(1));
+                path = f.path;
+            }
+        } else {
+            path = path.replace(/\\/g, "/");
+            if (/^\w/.test(path)) {
+                let f = Services.dirsvc.get("ProfD", Ci.nsIFile);
+                f.appendRelativePath(path.slice(1));
+                path = f.path
+            }
+        }
+        return path;
+    }
+
+    /**
+     * 计算文本的哈希值
+     * 
+     * @param {string} text 需要计算的文本
+     * @param {string} type 哈希类型
+     * @returns 
+     */
+    function hashText (text, type) {
+        if (!(typeof text == 'string' || text instanceof String)) {
+            text = "";
+        }
+
+        // var converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"]
+        //     .createInstance(Ci.nsIScriptableUnicodeConverter);
+
+        // converter.charset = "UTF-8";
+        // var result = {};
+        // var data = converter.convertToByteArray(text, result);
+
+        // Bug 1851797 - Remove nsIScriptableUnicodeConverter convertToByteArray and convertToInputStream
+        let data = new TextEncoder("utf-8").encode(text);
+
+        if (Ci.nsICryptoHash[type]) {
+            type = Ci.nsICryptoHash[type]
+        } else {
+            type = 2;
+        }
+        var hasher = Cc["@mozilla.org/security/hash;1"].createInstance(
+            Ci.nsICryptoHash
+        );
+
+        text = null;
+        hasher.init(type);
+        hasher.update(data, data.length);
+        var hash = hasher.finish(false);
+        str = data = hasher = null;
+
+        function toHexString (charCode) {
+            return ("0" + charCode.toString(16)).slice(-2);
+        }
+
+        return Array.from(hash, (c, i) => toHexString(hash.charCodeAt(i))).join("");
+    }
+
+    /**
+     * 文本串替换
+     * 
+     * @param {string} replaceString 需要处理的文本串
+     * @param {Array} find 需要被替换的文本串
+     * @param {Array} replace 替换的文本串
+     * @returns string
+     */
+    function replaceArray (replaceString, find, replace) {
+        var regex;
+        for (var i = 0; i < find.length; i++) {
+            regex = new RegExp(find[i], "g");
+            replaceString = replaceString.replace(regex, replace[i]);
+        }
+        return replaceString;
+    }
+
+    /**
+     * 收集 cookie 并保存到文件
+     * 
+     * @param {string} link 链接
+     * @param {boolean} saveToFile 是否保存到文件 
+     * @param {Function|string|undefined} filter Cookie 过滤器
+     * @returns 
+     */
+    function gatherCookies (link, saveToFile = false, filter) {
+        if (!link) return "";
+        if (!/^https?:\/\//.test(link)) return "";
+        const uri = Services.io.newURI(link, null, null);
+        let cookies = Services.cookies.getCookiesFromHost(uri.host, {});
+        const cookieSavePath = handlePath("{TmpD}");
+
+        // Apply filter if specified
+        if (filter) cookies = cookies.filter(cookie => filter.includes(cookie.name));
+
+        // Format and save cookies to file if needed
+        if (saveToFile) {
+            const cookieString = cookies.map(formatCookie).join('');
+            const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+            file.initWithPath(cookieSavePath);
+            file.append(`${uri.host}.txt`);
+
+            if (!file.exists()) file.create(Ci.nsIFile.NORMAL_FILE_TYPE, 0o644);
+
+            const foStream = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
+            foStream.init(file, 0x02 | 0x08 | 0x20, 0o666, 0);
+            foStream.write(cookieString, cookieString.length);
+            foStream.close();
+
+            return file.path;
+        } else {
+            return cookies.map(cookie => `${cookie.name}:${cookie.value}`).join("; ");
+        }
+
+        function formatCookie (co) {
+            // Format to Netscape type cookie format
+            return [
+                `${co.isHttpOnly ? '#HttpOnly_' : ''}${co.host}`,
+                co.isDomain ? 'TRUE' : 'FALSE',
+                co.path,
+                co.isSecure ? 'TRUE' : 'FALSE',
+                co.expires > 0 ? co.expires : "0",
+                co.name,
+                co.value
+            ].join('\t') + '\n';
+        }
+    }
+
     await window.DownloadPlus.init();
 })(`
-.FlashGot {
+.FlashGot-icon {
     list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTcgMTh2LTJoLjVhMy41IDMuNSAwIDEgMC0yLjUtNS45NVYxMGE2IDYgMCAxIDAtOCA1LjY1OXYyLjA4OWE4IDggMCAxIDEgOS40NTgtMTAuNjVBNS41IDUuNSAwIDEgMSAxNy41IDE4bC0uNS4wMDF6bS00LTEuOTk1aDNsLTUgNi41di00LjVIOGw1LTYuNTA1djQuNTA1eiIvPjwvc3ZnPg==);
+}
+.FlashGot-reload {
+    list-style-image: url("chrome://global/skin/icons/reload.svg");
+}
+.FlashGot-about {
+    list-style-image: url("chrome://global/skin/icons/help.svg");
+}
+.FlashGot-download {
+    list-style-image: url("chrome://browser/skin/downloads/downloads.svg");
+}
+.downloader-item[managerId="Internet-Download-Manager"] {
+    list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADRUlEQVQ4T6WTf2wTZRzGn/e9u/687my3MVgZRegGOoEhS9hYQFGqKBH+ARPQ6B8zkSjEQAwhBnUxxhBiwB+I6AwYCI5MGYSYGEJIzAiQJSwBQxldSdfa9Xd37dq73W6963mQiEaJ//j9503evM/nyfvk+xD8zyH/pT99urdDY+q3lvSZQEzmQ+WJscEje97+ytTM/Kl7KMAwDLL/cPe+Zf5nt3sErdEl+JAsl/BjuBVKTs6x4m9v+dhXBnp6SPVfgGCwx/Jpb3Dj/Ceun1reuMriqbHD3dSMMr8JZ4NNSERsKMbGdMR+2PHzsQ+OPgD0938jPKJe3EKV8qb+dHR1kz8pzHN3YW37RjS4JYjGMvQNezB8ezmK8STE8C/K1OjJtvuAgYHXWoRc+oTr0tjKGylavfl8grq9FDWCC2s72uD3rMKNyWdwfmgJomGglAqhEL0COfzTx6Tnu25PR92tQffRbOudMAkeczJi64bMamEhBWezYE5DIyTyCeKFpzEeVVDKJSDnTUBsCFp26BzZfqbrozfU5PvyQaK9GSmuEZ2ezZ1rpN32uTUA5wWhs1DU9kCrGJiWRajlDKbECMqJYTByuI+8eqFj/F1X2isfYNX9caFlKDXxpHtO7Vmu2YLyegKh4ACXXAQmXwMyqcJQwlClUajFPCZFdhdZcX69vnvBHdqW0zF5qeHX76/M7L2QZA8rTtouvzQM24scCDhQ0Q4+X4H1rorpoAY95kpoor2TrDtwqJQP9Lpedsp4rlqFLWvNXr5uyX/bN/F4aEkGxEdhNSGgBqCbiVfNM2OA3rWU/PFF+0hn4L3P7IGWdzJdp+BqDOMxCnjNd5nfKzhzLgtZrIBtpmAfZaCFqtBGqmCzbJ7GuUOGRHsJz8+uX9y+8+DsFYFtii9C5blBaM4i2IoDqavXkE4NwiiZxhHAMBfYYdgvG1nmQykvXTN9pu/vAc/z9e66pzYvaH2921a7eCkYK0cqup4wvi6OWr6srY4ARKKSVXZ8oaX1I4qipE3ZvQ+Z+fw1nMNRV8cwnN/Oe2fpM4UC9cnzSgvTx9kR600k2b2yTR5EElN/L+DDyvTgbuULS72hXHSXGqx8brqO34vwn+39A9u2aguAlsZkAAAAAElFTkSuQmCC");
+}
+.downloader-item[managerId="Free-Download-Manager"] {
+    list-style-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACqElEQVQ4T42STUhUURTH//e9NzM6M45jSqFI0a5FtAn6WKTRSnAIUsayDzVnaCVElohETS2CNiFCtIxoUZBIChXJtFLUooVSkNiQJYM6kvgxn+/NzL2vc9/gJy66cN+97957fvz/5xxmP3vjCDf5IxM4BzAN/zXMOSbMEB99PsDU2sCQaeK8SR9TEIb9F4EemT+RzTcxpTaQpEBXZUUZLtQcR6nbCQnba2yeFjb5jJHpIEBQF5w7bl6sQ29HkyVA3ksxckrWnivAF2JLtzcBD4ONuN9ajzw3keUCnKJksFSzAdgAFxQyHlvaBngQbCCAD2kjj8fvJzD5Nw3FZrdyYj1ntNnIj1wZ43oisaVAAu61+JDI5OB/8QnhlAvM5YHCTHg0E6s5wmhUJEWhSQCFcSTXtgECDbhLgCQBml6NIJwrByspg1cTeHLMg9HFON4sGkjbnVA01bKgJJZ3AnquSQs5dL37inHDDcXphkcV6DtRiWq3HYOzy+iLrGNGOMBsDq7GdwG6r/qQywusZ7IwhPReqInbppFiZv1F1lJ4OrOMoVVwPZXcUhAiC91XCgBF+rTKV6hAliojZFUIoBLl89w8OiZjPGqwnYCuyz4YOY4vv6KIpXSyqcCuKjh5qAolxUWUHx0DU9N4Nr2AqLeaq+YuwJ1mH1JGFtdfhzG8rkItdmGfDeivO0oydPSOfcOHNeqTAwfB3F6O+AopqAnMCiEOSwudl2QSDbS9HcewqIDiKYObquUvSWMk8gcRrRRKRRVQVCztJJWl+Ram1rS1U+OFQu2N1bdIQUYqGJzAR+wngJcSR/71lNX8zOmkXrBZJyyTeOkZG+thfr9f7Y/aT3U2+0631p9x6Nk8usJTGEE5NBlAObAGLUIml4hM13+7fnwfjvcGV/4BtgR56y5SI9QAAAAASUVORK5CYII=);
+}
+.downloader-item[managerId="BitComet"] {
+    list-style-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADcUlEQVQ4T12Ta2hbZQCGn+/kpLltS9J7adps7eqlK047GF3qZUwHOhCpxWyCOH9s+qOgrIMIoqN4+aFQhxX2Q4cIrkgbBoKYKmrLZG02sa51W2fXa2zWZs3aNWkuTU5yjsfIoPr9+fh+vM/38vK+gv+die6uFkMqcsJaZPaaXPVoGmzcuML8xEx/ssh4+lDfT5c2S8S9R6Cny3VfIt1tqizxOj0HsOxsBFGEEBqqmiMdmmL6q89YGL7Yr7h3nWw/2xv+R1sADPX4XPV504j14Udq7Huf1HVmMBgKbJHPFu5kNMSWskpCgW8YP3N6IV9a7WnvHQgXABPvvd5X/uh+r6P1ANr6Opi3ISy2glBJxSgyWcjMjqEsTmNqfoLQ+X4ufX6m/2hw7rAY8h1raaguD1a+2gmxNd2ugqF8B0p0UgcVQy5JLn4bc00TuR/PEYuv43zqOX5+o4PIcmKfuPrm0b7atnavbXsjInmXnM2OsDvQxr9DczejSSq5a99j8bxC5uYwpqlRltI5FFMVgz2f+kX47Re1io63yEcXkCXIuxpITF3Anlokt2M/GGWkyQDxbbVYK5uQLvaS+vMK6sHjjLxzCnHn3SOa/dkjelgKqbgeVGsbK/7XKKlvJuXYpQdqwHx7lLWVCM6n3yf2tQ/LSpR1Ry2Xz/2AiH9wWJNrSilybyeTWYIH9ui/fIixbg9Joxth0JBZQrkWxNr2BYmBT7BE5ojNhpiZ1RBrvlZNkiMYXXZU9260UivG8CCivB7FUo2QdUAmDvNBsntPwfQohrEAybkovy0XIyZPNPZVaXe8JucGiqcdSZ1Gzi4inE7yljodoCJlMhC+zEbdy0ixFPIvXxKaz3Jhtd4vho41tzSY5oLFjg2kxw8hZcf09iTAUYxmrQbdgUgnkJYmyJY9g5rIkR8ZYPAPmM09uK9QpGDHzr4Gy5LX+lAd8paZQoGkqiryBqvuwKLz9GxWo+S37ib5V5wbv84xEi7z+75d8BYA533Pu+5Xr4+U2G7VlLlVvYUZtK1WVJsuNphgXQcoMsqajfGrWUYjzgVH9WOelz7q/bfK9yAV4np3hXzLW1mawewEzSwjJH1MGyrLy/D7TZmJ1Qp/aZOn83jXpjFtnmfA19oicoudxcbYC2o+QTYPac3O7F2zP22s/fjk2eH/zPlvFuZthlH+/JwAAAAASUVORK5CYII=);
+}
+menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
+#context-media-eme-learnmore:has(~ #FlashGot-ContextMenu[hide-eme-sep=true]) {
+    display: none !important;
 }
 `, `
 #downloadsContextMenu:not([needsgutter]) > .downloadPlus-menuitem > .menu-iconic-left {
@@ -579,14 +1213,18 @@
 hbox.copied > #completeLinkDescription {
     text-decoration: underline;
 }
-#quickSave > button {
-    padding: 0;
-    & > .button-box {
-        margin: 0;
-        & >.button-icon {
-            height: 16px;
-            width: 16px;
-            margin-right: 4px;
+#quickSave {
+    max-width: 537px;
+    flex-wrap: wrap;
+    & > button {
+        padding: 0;
+        & > .button-box {
+            margin: 0;
+            & >.button-icon {
+                height: 16px;
+                width: 16px;
+                margin-right: 4px;
+            }
         }
     }
 }
