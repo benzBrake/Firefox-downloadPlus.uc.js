@@ -6,22 +6,22 @@
 
 这个脚本最先是紫云飞开发的：https://files.cnblogs.com/ziyunfei/removeFileFromDownloadManager.uc.js
 */
-// @version         1.0.0
+// @version         1.0.1
 // @license         MIT License
 // @compatibility   Firefox 72
 // @charset         UTF-8
 // @include         main
+// @include         about:downloads
 // @include         chrome://browser/content/places/places.xhtml
-// @include         chrome://browser/content/places/places.xul
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
-// @include         chrome://browser/content/downloads/contentAreaDownloadsView.xul
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.1 移除过时的兼容代码，兼容 about:downloads 页面
 // @note            1.0.0
 // ==/UserScript==
 (function (css) {
-    const $C = (tag, attrs) => {
-        let el = document.createXULElement(tag);
+    const $C = (doc, tag, attrs) => {
+        let el = doc.createXULElement(tag);
         for (let [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
         return el;
     };
@@ -35,19 +35,10 @@
         PREF_ENABLED: 'userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem',
         init: function () {
             if (!Services.prefs.getBoolPref(this.PREF_ENABLED, true)) return;
-            let contextMenu = document.getElementById("downloadsContextMenu");
-            if (contextMenu.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
-            addStyle(css);
-            let dom = contextMenu.insertBefore(
-                $C("menuitem", {
-                    id: 'downloadRemoveFromHistoryEnhanceMenuItem',
-                    class: 'downloadRemoveFromHistoryMenuItem downloadPlus-menuitem',
-                    label: "从硬盘删除",
-                    accesskey: "D"
-                }),
-                contextMenu.querySelector(".downloadRemoveFromHistoryMenuItem")
-            );
-            dom.addEventListener('command', this, false);
+            if (location.href.startsWith("chrome://browser/content/browser.xhtml")) {
+                document.addEventListener('DOMContentLoaded', this);
+            }
+            this.createMenu(document);
         },
         handleEvent: function (event) {
             const { type } = event;
@@ -74,18 +65,7 @@
                 }
             }
 
-            if (location.href.startsWith("chrome://browser/content/browser.x")) {
-                let aTriggerNode = DownloadsView.contextMenu.triggerNode,
-                    element = aTriggerNode.closest('.download-state'),
-                    sShell = element._shell,
-                    path = sShell.download.target.path;
-                removeSelectedFile(path);
-                sShell.doCommand("cmd_delete");
-            } else if (location.href.startsWith("chrome://browser/content/places/places.x") || location.href.startsWith("chrome://browser/content/downloads/contentAreaDownloadsView.x")) {
-                var ddBox = document.getElementById("downloadsRichListBox");
-                if (!(ddBox && ddBox._placesView)) {
-                    ddBox = document.getElementById("downloadsListBox");
-                }
+            function ddBoxOperate (ddBox) {
                 if (!ddBox) return;
                 var len = ddBox.selectedItems.length;
 
@@ -96,7 +76,33 @@
                     sShell.doCommand("cmd_delete");
                 }
             }
+
+            let contextMenu = event.target.closest('menupopup'),
+                aTriggerNode = contextMenu.triggerNode,
+                ddBox = aTriggerNode.closest('#downloadsListBox');
+            if (ddBox) {
+                ddBoxOperate(ddBox);
+            }
         },
+        onDOMContentLoaded (event) {
+            if (event.target.location.href.startsWith("about:downloads"))
+                this.createMenu(event.target);
+        },
+        createMenu (doc) {
+            let contextMenu = doc.getElementById("downloadsContextMenu");
+            if (contextMenu.querySelector("#downloadRemoveFromHistoryEnhanceMenuItem")) return;
+            addStyle(css);
+            let dom = contextMenu.insertBefore(
+                $C(doc, "menuitem", {
+                    id: 'downloadRemoveFromHistoryEnhanceMenuItem',
+                    class: 'downloadRemoveFromHistoryMenuItem downloadPlus-menuitem',
+                    label: "从硬盘删除",
+                    accesskey: "D"
+                }),
+                contextMenu.querySelector(".downloadRemoveFromHistoryMenuItem")
+            );
+            dom.addEventListener('command', this, false);
+        }
     }
     removeFileItem.init();
 })(`
