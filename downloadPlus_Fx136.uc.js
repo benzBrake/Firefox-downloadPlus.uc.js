@@ -14,6 +14,7 @@ userChromeJS.downloadPlus.flashgotDefaultManager 默认第三方下载器（一�
 userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
 userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换，如果userChromeJS.lus.enableRename没开启，这个选项无效
 userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
+userChromeJS.downloadPlus.enableCopyLinkButton 下载对话框启用复制链接按钮
 userChromeJS.downloadPlus.enableDoubleClickToOpen 双击打开
 userChromeJS.downloadPlus.enableDoubleClickToSave 双击保存
 userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
@@ -21,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250319 增加复制按钮开关pref，
 // @note            20250226 正式进入无 JSM 时代，永久删除文件功能未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
 // @include         main
 // @include         chrome://browser/content/places/places.xhtml
@@ -28,7 +30,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
-// @version         1.0.2
+// @version         1.0.4
 // @compatibility   Firefox 136
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
@@ -65,7 +67,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             "set to default download manger": "设置 %s 为默认下载器",
             "save and open": "保存并打开",
             "save as": "另存为",
-            "quick save to": "快速保存到：",
+            "save to": "保存到",
             "desktop": "桌面",
             "downloads folder": "下载",
             "disk %s": "%s 盘",
@@ -202,7 +204,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(placesCSS), windowUtils.AUTHOR_SHEET);
                     break;
                 case 'chrome://mozapps/content/downloads/unknownContentType.xhtml':
-                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(unknownContentCSS), windowUtils.AUTHOR_SHEET);
+                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(unknownContentCSS), windowUtils.AGENT_SHEET);
                     await this.initDownloadPopup();
                     break;
             }
@@ -372,10 +374,10 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     encodingConvertButton.appendChild(menupopup);
                 }
             }
+            let h = createEl(document, 'hbox', { align: 'center' });
+            $("#source").parentNode.after(h);
             // 复制链接
             if (isTrue('userChromeJS.downloadPlus.enableDoubleClickToCopyLink')) {
-                let h = createEl(document, 'hbox', { align: 'center' });
-                $("#source").parentNode.after(h);
                 let label = h.appendChild(createEl(document, 'label', {
                     innerHTML: LANG.format("complete link"),
                     style: 'margin-top: 1px'
@@ -388,6 +390,11 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     value: dialog.mLauncher.source.spec,
                     tooltiptext: LANG.format("dobule click to copy link"),
                 }));
+                [label, description].forEach(el => el.addEventListener("dblclick", () => {
+                    copyText(dialog.mLauncher.source.spec);
+                }));
+            }
+            if (isTrue('userChromeJS.downloadPlus.enableCopyLinkButton')) {
                 h.appendChild(createEl(document, 'button', {
                     id: 'copy-link-btn',
                     label: LANG.format("copy link"),
@@ -401,9 +408,6 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         }.bind(this), 1000);
                     }
                 }));
-                [label, description].forEach(el => el.addEventListener("dblclick", () => {
-                    copyText(dialog.mLauncher.source.spec);
-                }))
             }
             // 双击保存
             if (isTrue('userChromeJS.downloadPlus.enableDoubleClickToSave')) {
@@ -532,30 +536,22 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             }
             // 快速保存
             if (isTrue('userChromeJS.downloadPlus.enableSaveTo')) {
-                let quickSave = createEl(document, 'vbox', {
-                    id: 'quickSaveBox',
-                    flex: 1
+                let saveTo = createEl(document, 'button', {
+                    id: 'save-to',
+                    class: 'dialog-button',
+                    label: LANG.format("save to"),
+                    type: 'menu',
+                    accesskey: 'T'
                 });
-                quickSave.appendChild(createEl(document, 'label', {
-                    class: 'header',
-                    value: LANG.format("quick save to"),
-                    flex: 1,
-                    control: 'quickSave'
-                }));
-                let hbox = quickSave.appendChild(createEl(document, 'hbox', {
-                    id: 'quickSave',
-                    flex: 1,
-                    pack: 'end'
-                }));
-                quickSave.appendChild(createEl(document, 'separator', {
-                    class: 'thin'
-                }))
+                let saveToMenu = createEl(document, 'menupopup');
+                saveTo.appendChild(saveToMenu);
                 Services.wm.getMostRecentWindow("navigator:browser").DownloadPlus.SAVE_DIRS.forEach(item => {
                     let [name, dir] = [item[1], item[0]];
-                    hbox.appendChild(createEl(document, "button", {
+                    saveToMenu.appendChild(createEl(document, "menuitem", {
                         label: name || (dir.match(/[^\\/]+$/) || [dir])[0],
                         dir: dir,
                         image: "moz-icon:file:///" + dir + "\\",
+                        class: "menuitem-iconic",
                         onclick: function () {
                             let dir = this.getAttribute('dir');
                             let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
@@ -573,7 +569,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         }
                     }));
                 })
-                document.getElementById("normalBox").after(quickSave);
+                dialogFrame.getButton('cancel').before(saveTo);
             }
             setTimeout(() => {
                 // 强制显示打开/保存/FlashGot选项
@@ -1175,12 +1171,12 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 }
 #locationText {
     border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
-    border-right-width: 0;
-    border-radius:var(--border-radius-small) 0 0 var(--border-radius-small);
+    border-right-width: 0 !important;
+    border-radius:var(--border-radius-small) 0 0 var(--border-radius-small) !important;
     padding-inline: 5px;
     flex: 1;
     appearance: none;
-    padding-block: 2px;
+    padding-block: 2px !important;
     margin: 0;
     height: 18px;
 }
@@ -1192,16 +1188,16 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 }
 #encodingConvertButton {
     height: 23px;
-    min-width: unset;
+    min-width: unset !important;
     list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGQ9Ik0zLjYwMzUxNTYgMkwwIDEyLjc5Mjk2OUwwIDEzTDEgMTNMMSAxMi45NTcwMzFMMS45ODYzMjgxIDEwTDcuMDE5NTMxMiAxMEw4IDEyLjk1NTA3OEw4IDEzTDkgMTNMOSAxMi43OTQ5MjJMNS40MTYwMTU2IDJMNC41IDJMMy42MDM1MTU2IDIgeiBNIDQuMzIyMjY1NiAzTDQuNSAzTDQuNjk1MzEyNSAzTDYuNjg3NSA5TDIuMzIwMzEyNSA5TDQuMzIyMjY1NiAzIHogTSAxMSA1TDExIDZMMTMuNSA2QzE0LjMzNTAxNSA2IDE1IDYuNjY0OTg0OSAxNSA3LjVMMTUgOC4wOTM3NUMxNC44NDI3NSA4LjAzNzEzMzUgMTQuNjc1NjcgOCAxNC41IDhMMTEuNSA4QzEwLjY3NzQ2OSA4IDEwIDguNjc3NDY4NiAxMCA5LjVMMTAgMTEuNUMxMCAxMi4zMjI1MzEgMTAuNjc3NDY5IDEzIDExLjUgMTNMMTMuNjcxODc1IDEzQzE0LjE0NjI5NyAxMyAxNC42MDQ0ODYgMTIuODYwMDg0IDE1IDEyLjYxMTMyOEwxNSAxM0wxNiAxM0wxNiAxMS43MDcwMzFMMTYgOS41TDE2IDcuNUMxNiA2LjEyNTAxNTEgMTQuODc0OTg1IDUgMTMuNSA1TDExIDUgeiBNIDExLjUgOUwxNC41IDlDMTQuNzgxNDY5IDkgMTUgOS4yMTg1MzE0IDE1IDkuNUwxNSAxMS4yOTI5NjlMMTQuNzMyNDIyIDExLjU2MDU0N0MxNC40NTEwNzQgMTEuODQxODk1IDE0LjA2OTE3MSAxMiAxMy42NzE4NzUgMTJMMTEuNSAxMkMxMS4yMTg1MzEgMTIgMTEgMTEuNzgxNDY5IDExIDExLjVMMTEgOS41QzExIDkuMjE4NTMxNCAxMS4yMTg1MzEgOSAxMS41IDkgeiIvPjwvc3ZnPg==);
     border-radius: 0;
     margin-block: 0;
-    margin-inline: 0;
+    margin-inline: 0 !important;
     outline: none;
-    appearance: none;
+    appearance: none !important;
     box-sizing: border-box;
-    border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow);
-    border-radius: 0 var(--border-radius-small) var(--border-radius-small) 0;
+    border: 1px solid var(--in-content-box-border-color, ThreeDDarkShadow) !important;
+    border-radius: 0 var(--border-radius-small) var(--border-radius-small) 0  !important;
 }
 #basicBox {
     display: none;
@@ -1213,19 +1209,20 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 hbox.copied > #completeLinkDescription {
     text-decoration: underline;
 }
-#quickSave {
-    max-width: 537px;
-    flex-wrap: wrap;
-    & > button {
-        padding: 0;
-        & > .button-box {
-            margin: 0;
-            & >.button-icon {
-                height: 16px;
-                width: 16px;
-                margin-right: 4px;
-            }
-        }
-    }
+hbox.dialog-button-box button.dialog-button menupopup {
+    background: #F0F0F0 !important;
+    border: 1px solid #CCCCCC !important;
+    padding: 2px !important;
+}
+hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic:hover {
+    background: #91C9F7 !important;
+}
+hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic hbox.menu-iconic-left {
+    padding: 3px !important;
+}
+hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic label.menu-iconic-text{
+    padding: 3px !important;
+    padding-left: 5px !important;
+    padding-right: 12px !important;
 }
 `)
