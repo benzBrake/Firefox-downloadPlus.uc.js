@@ -523,7 +523,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             if (isTrue('userChromeJS.downloadPlus.enableSaveAs')) {
                 let saveAs = createEl(document, 'button', {
                     id: 'save-as',
-                    label: "另存为",
+                    label: LANG.format("save as"),
                     accesskey: 'E',
                     oncommand: function () {
                         const mainwin = Services.wm.getMostRecentWindow("navigator:browser");
@@ -913,6 +913,12 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
         return arr;
     }
 
+    /**
+     * 选择 HTML 元素
+     * 
+     * @param {string} sel 选择表达式
+     * @returns 
+     */
     function $ (sel) {
         return document.querySelector(sel);
     }
@@ -938,10 +944,23 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
         }
         return el;
     }
+
+    /**
+     * 复制文本到剪贴板
+     * 
+     * @param {string} aText 需要复制的文本
+     */
     function copyText (aText) {
         Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(aText);
     }
 
+    /**
+     * 从文件读取内容
+     * 
+     * @param {Ci.nsIFile|string} aFileOrPath 文件实例或路径
+     * @param {string} encoding 编码
+     * @returns 
+     */
     function readText (aFileOrPath, encoding = "UTF-8") {
         encoding || (encoding = "UTF-8");
         var aFile;
