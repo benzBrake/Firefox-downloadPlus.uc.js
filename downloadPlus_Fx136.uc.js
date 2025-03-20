@@ -558,12 +558,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                             let path = dir.replace(/^\./, Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile).path);
                             path = path.endsWith("\\") ? path : path + "\\";
                             file.initWithPath(path + (document.querySelector("#locationText") ? document.querySelector("#locationText").value : document.querySelector("#location").value).trim());
-                            if (typeof dialog.mLauncher.saveToDisk === 'function') {
-                                dialog.mLauncher.saveToDisk(file, 1);
-                            } else {
-                                dialog.mLauncher.MIMEInfo.preferredAction = dialog.mLauncher.MIMEInfo.saveToDisk;
-                                dialog.mLauncher.saveDestinationAvailable(file);
-                            }
+                            dialog.mLauncher.saveDestinationAvailable(file);
                             dialog.onCancel = function () { };
                             close();
                         }
