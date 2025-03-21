@@ -1224,12 +1224,14 @@ hbox.copied > #completeLinkDescription {
     text-decoration: underline;
 }
 hbox.dialog-button-box button.dialog-button menupopup {
-    background: #F0F0F0 !important;
+    // background: #F0F0F0 !important;
+    background: light-dark(var(--color-white), var(--color-gray-80)) !important;
     border: 1px solid #CCCCCC !important;
     padding: 2px !important;
 }
 hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic:hover {
-    background: #91C9F7 !important;
+    // background: #91C9F7 !important;
+    background: color-mix(in srgb, currentColor 17%, transparent);
 }
 hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic hbox.menu-iconic-left {
     padding: 3px !important;
@@ -1238,5 +1240,6 @@ hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic l
     padding: 3px !important;
     padding-left: 5px !important;
     padding-right: 12px !important;
+    align-items: center;
 }
 `)
