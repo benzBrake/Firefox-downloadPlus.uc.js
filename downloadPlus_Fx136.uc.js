@@ -491,16 +491,6 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     });
 
                     $('#mode').appendChild(flashgotHbox);
-
-                    dialog.onOK = (() => {
-                        var cached_function = dialog.onOK;
-                        return function () {
-                            if ($('#flashgotRadio').selected)
-                                return triggerDownload();
-                            else
-                                return cached_function.apply(this, arguments);
-                        };
-                    })();
                 }
             }
             // 保存并打开
@@ -566,6 +556,20 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                 })
                 dialogFrame.getButton('cancel').before(saveTo);
             }
+            dialog.onOK = (() => {
+                var cached_function = dialog.onOK;
+                return function () {
+                    if ($('#flashgotRadio')?.selected)
+                        return triggerDownload();
+                    else if ($('#locationText')?.value) {
+                        let fileName = $("#locationText") ? $("#locationText").value : dialog.mLauncher.suggestedFileName;
+                        dialog.mContext.eval("(" + dialog.mContext.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, document, fileName, null, null, false, null, null, null, null, null, true, null, dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
+                        close();
+                    } else {
+                        return cached_function.apply(this, arguments);
+                    }
+                };
+            })();
             setTimeout(() => {
                 // 强制显示打开/保存/FlashGot选项
                 document.getElementById("normalBox").removeAttribute("collapsed");
