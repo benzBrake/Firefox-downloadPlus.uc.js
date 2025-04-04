@@ -185,9 +185,11 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     id: 'FlashGot-ContextMenu',
                     label: sprintf("download-through-flashgot"),
                     class: 'FlashGot-icon',
-                    accesskey: 'F',
-                    onclick: 'event.target.querySelector("#FlashGot-ContextMenuitem")?.doCommand()'
+                    accesskey: 'F'
                 });
+                item.addEventListener('click', (event) => {
+                    event.target.querySelector("#FlashGot-ContextMenuitem")?.doCommand()
+                }, false);
                 const popup = createElement(doc, 'menupopup', {
                     id: 'FlashGot-ContextMenu-Popup',
                 });
