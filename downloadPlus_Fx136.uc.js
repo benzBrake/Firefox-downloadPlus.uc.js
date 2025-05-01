@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250501 修复下载文件改名失效
 // @note            20250319 增加复制按钮开关pref，
 // @note            20250226 正式进入无 JSM 时代，永久删除文件功能未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
 // @include         main
@@ -30,7 +31,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
-// @version         1.0.4
+// @version         1.0.5
 // @compatibility   Firefox 136
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
@@ -558,15 +559,15 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             }
             dialog.onOK = (() => {
                 var cached_function = dialog.onOK;
-                return function () {
+                return async function (...args) {
                     if ($('#flashgotRadio')?.selected)
                         return triggerDownload();
-                    else if ($('#locationText')?.value) {
-                        let fileName = $("#locationText") ? $("#locationText").value : dialog.mLauncher.suggestedFileName;
-                        dialog.mContext.eval("(" + dialog.mContext.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, document, fileName, null, null, false, null, null, null, null, null, true, null, dialog.mContext.PrivateBrowsingUtils.isBrowserPrivate(dialog.mContext.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
-                        close();
+                    else if ($('#locationText')?.value && $('#locationText')?.value != dialog.mLauncher.suggestedFileName) {
+                        dialog.onCancel = function () { };
+                        let file = await IOUtils.getFile(await Downloads.getPreferredDownloadsDirectory(), $('#locationText').value);
+                        return dialog.mLauncher.saveDestinationAvailable(file);
                     } else {
-                        return cached_function.apply(this, arguments);
+                        return cached_function.apply(this, ...args);
                     }
                 };
             })();
