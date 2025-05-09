@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250509 修复文件名无效字符导致下载失败的问题，简化几处 locationText 的调用
 // @note            20250501 修复下载文件改名失效
 // @note            20250319 增加复制按钮开关pref，
 // @note            20250226 正式进入无 JSM 时代，永久删除文件功能未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
@@ -41,6 +42,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
     const Services = globalThis.Services;
     const Downloads = globalThis.Downloads || ChromeUtils.importESModule("resource://gre/modules/Downloads.sys.mjs").Downloads;
     const ctypes = globalThis.ctypes || ChromeUtils.importESModule("resource://gre/modules/ctypes.sys.mjs").ctypes;
+    const invalidChars = /[<>:"/\\|?*]/g;
 
     const LANG = {
         'zh-CN': {
@@ -335,6 +337,18 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     value: dialog.mLauncher.suggestedFileName,
                     flex: 1
                 }));
+
+
+                // 输入不能用于文件名的字符输入框变红
+                locationText.addEventListener('input', function (e) {
+                    const currentText = this.value;
+                    if (currentText.match(invalidChars)) {
+                        this.classList.add('invalid');
+                    } else {
+                        this.classList.remove('invalid');
+                    }
+                });
+
                 if (isTrue('userChromeJS.downloadPlus.enableEncodeConvert')) {
                     let encodingConvertButton = locationHbox.appendChild(createEl(document, 'button', {
                         id: 'encodingConvertButton',
@@ -437,7 +451,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         }
                         let mSourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
                         fdp.downloadByManager($('#flashgotHandler').getAttribute('manager'), source.spec, {
-                            fileName: document.querySelector("#locationText")?.value || dialog.mLauncher.suggestedFileName,
+                            fileName: $("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName,
                             mLauncher,
                             mSourceContext: mSourceContext.parent ? mSourceContext.parent : mSourceContext,
                             isPrivate: bw.PrivateBrowsingUtils.isWindowPrivate(window)
@@ -519,7 +533,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     oncommand: function () {
                         const mainwin = Services.wm.getMostRecentWindow("navigator:browser");
                         // 感谢 ycls006
-                        mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, (document.querySelector("#locationText") ? document.querySelector("#locationText").value : dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
+                        mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
                         close();
                     }
                 });
@@ -548,7 +562,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                             let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
                             let path = dir.replace(/^\./, Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile).path);
                             path = path.endsWith("\\") ? path : path + "\\";
-                            file.initWithPath(path + (document.querySelector("#locationText") ? document.querySelector("#locationText").value : document.querySelector("#location").value).trim());
+                            file.initWithPath(path + ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName));
                             dialog.mLauncher.saveDestinationAvailable(file);
                             dialog.onCancel = function () { };
                             close();
@@ -1198,6 +1212,10 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
     padding-block: 2px !important;
     margin: 0;
     height: 18px;
+}
+#locationText.invalid {
+    outline: 2px solid red !important;
+    background-color: #ffc0c0 !important;
 }
 #locationHbox {
     display: flex;
