@@ -558,6 +558,14 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     accesskey: 'T'
                 });
                 let saveToMenu = createEl(document, 'menupopup');
+                saveToMenu.appendChild(createEl(document, "html:link", {
+                    rel: "stylesheet",
+                    href: "chrome://global/skin/global.css"
+                }));
+                saveToMenu.appendChild(createEl(document, "html:link", {
+                    rel: "stylesheet",
+                    href: "chrome://global/content/elements/menupopup.css"
+                }));
                 saveTo.appendChild(saveToMenu);
                 Services.wm.getMostRecentWindow("navigator:browser").DownloadPlus.SAVE_DIRS.forEach(item => {
                     let [name, dir] = [item[1], item[0]];
@@ -1255,7 +1263,7 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 hbox.copied > #completeLinkDescription {
     text-decoration: underline;
 }
-hbox.dialog-button-box button.dialog-button menupopup {
+/* hbox.dialog-button-box button.dialog-button menupopup {
     // background: #F0F0F0 !important;
     background: light-dark(var(--color-white), var(--color-gray-80)) !important;
     border: 1px solid #CCCCCC !important;
@@ -1274,4 +1282,7 @@ hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic l
     padding-right: 12px !important;
     align-items: center;
 }
+hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic .menu-highlightable-text {
+    display: none;
+} */
 `)
