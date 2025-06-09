@@ -27,6 +27,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note            20250319 增加复制按钮开关pref，
 // @note            20250226 正式进入无 JSM 时代，永久删除文件功能未集成，请使用 removeFileFromDownloadManager.uc.js，下载规则暂时也不支持
 // @include         main
+// @sandbox         true
 // @include         chrome://browser/content/places/places.xhtml
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml
@@ -168,6 +169,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 
     /* Do not change below 不懂不要改下边的 */
     if (window.DownloadPlus) return;
+
     window.DownloadPlus = {
         PREF_FLASHGOT_PATH: 'userChromeJS.downloadPlus.flashgotPath',
         PREF_DEFAULT_MANAGER: 'userChromeJS.downloadPlus.flashgotDefaultManager',
@@ -532,8 +534,15 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     accesskey: 'E',
                     oncommand: function () {
                         const mainwin = Services.wm.getMostRecentWindow("navigator:browser");
+
                         // 感谢 ycls006
-                        mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
+                        // mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
+                        let fnSource = "(function() {" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + "\ninternalSave('" + dialog.mLauncher.source.asciiSpec + "', null, null,'" + ($('#locationText')?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName) + "', null, null, false, null, null, null, null, null, false, null, " + mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser) + ", Services.scriptSecurityManager.getSystemPrincipal());\n})()";
+                        try {
+                            Services.scriptloader.loadSubScript("data:application/javascript;," + encodeURIComponent(fnSource), mainwin);
+                        } catch (e) {
+                            console.error(e);
+                        }
                         close();
                     }
                 });
