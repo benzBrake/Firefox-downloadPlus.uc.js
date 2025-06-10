@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250610 Fx139
 // @note            20250509 修复文件名无效字符导致下载失败的问题，简化几处 locationText 的调用
 // @note            20250501 修复下载文件改名失效
 // @note            20250319 增加复制按钮开关pref，
@@ -34,7 +35,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @include         chrome://browser/content/downloads/contentAreaDownloadsView.xhtml?SM
 // @include         about:downloads
 // @version         1.0.5
-// @compatibility   Firefox 136
+// @compatibility   Firefox 139
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
 (async function (gloalCSS, placesCSS, unknownContentCSS) {
@@ -355,6 +356,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     let encodingConvertButton = locationHbox.appendChild(createEl(document, 'button', {
                         id: 'encodingConvertButton',
                         type: 'menu',
+                        size: 'small',
                         tooltiptext: LANG.format("encoding convert tooltip")
                     }));
                     let converter = Cc['@mozilla.org/intl/scriptableunicodeconverter']
@@ -415,6 +417,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                 h.appendChild(createEl(document, 'button', {
                     id: 'copy-link-btn',
                     label: LANG.format("copy link"),
+                    size: 'small',
                     onclick: function () {
                         copyText(dialog.mLauncher.source.spec);
                         this.setAttribute("label", LANG.format("copied"));
@@ -516,6 +519,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     id: 'save-and-open',
                     label: LANG.format("save and open"),
                     accesskey: 'P',
+                    size: 'small',
                     part: 'dialog-button'
                 });
                 saveAndOpen.addEventListener('click', () => {
@@ -553,6 +557,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                 let saveTo = createEl(document, 'button', {
                     id: 'save-to',
                     class: 'dialog-button',
+                    size: 'small',
                     label: LANG.format("save to"),
                     type: 'menu',
                     accesskey: 'T'
@@ -1213,8 +1218,9 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 }
 `, `
 #contentTypeImage {
-    height: 24px;
-    width: 24px;
+    height: 24px !important;
+    width: 24px !important;
+    margin-top: 3px !important;
 }
 #location {
     padding: 3px 0;
@@ -1228,7 +1234,7 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
     appearance: none;
     padding-block: 2px !important;
     margin: 0;
-    height: 18px;
+    height: calc(var(--button-min-height-small, 28px) - 4px - 1px) !important;
 }
 #locationText.invalid {
     outline: 2px solid red !important;
@@ -1241,7 +1247,8 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
     visibility: collapse;
 }
 #encodingConvertButton {
-    height: 23px;
+    min-height: var(--button-min-height-small, 28px) !important;
+    max-height: var(--button-min-height-small, 28px) !important;
     min-width: unset !important;
     list-style-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGQ9Ik0zLjYwMzUxNTYgMkwwIDEyLjc5Mjk2OUwwIDEzTDEgMTNMMSAxMi45NTcwMzFMMS45ODYzMjgxIDEwTDcuMDE5NTMxMiAxMEw4IDEyLjk1NTA3OEw4IDEzTDkgMTNMOSAxMi43OTQ5MjJMNS40MTYwMTU2IDJMNC41IDJMMy42MDM1MTU2IDIgeiBNIDQuMzIyMjY1NiAzTDQuNSAzTDQuNjk1MzEyNSAzTDYuNjg3NSA5TDIuMzIwMzEyNSA5TDQuMzIyMjY1NiAzIHogTSAxMSA1TDExIDZMMTMuNSA2QzE0LjMzNTAxNSA2IDE1IDYuNjY0OTg0OSAxNSA3LjVMMTUgOC4wOTM3NUMxNC44NDI3NSA4LjAzNzEzMzUgMTQuNjc1NjcgOCAxNC41IDhMMTEuNSA4QzEwLjY3NzQ2OSA4IDEwIDguNjc3NDY4NiAxMCA5LjVMMTAgMTEuNUMxMCAxMi4zMjI1MzEgMTAuNjc3NDY5IDEzIDExLjUgMTNMMTMuNjcxODc1IDEzQzE0LjE0NjI5NyAxMyAxNC42MDQ0ODYgMTIuODYwMDg0IDE1IDEyLjYxMTMyOEwxNSAxM0wxNiAxM0wxNiAxMS43MDcwMzFMMTYgOS41TDE2IDcuNUMxNiA2LjEyNTAxNTEgMTQuODc0OTg1IDUgMTMuNSA1TDExIDUgeiBNIDExLjUgOUwxNC41IDlDMTQuNzgxNDY5IDkgMTUgOS4yMTg1MzE0IDE1IDkuNUwxNSAxMS4yOTI5NjlMMTQuNzMyNDIyIDExLjU2MDU0N0MxNC40NTEwNzQgMTEuODQxODk1IDE0LjA2OTE3MSAxMiAxMy42NzE4NzUgMTJMMTEuNSAxMkMxMS4yMTg1MzEgMTIgMTEgMTEuNzgxNDY5IDExIDExLjVMMTEgOS41QzExIDkuMjE4NTMxNCAxMS4yMTg1MzEgOSAxMS41IDkgeiIvPjwvc3ZnPg==);
     border-radius: 0;
@@ -1263,26 +1270,10 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
 hbox.copied > #completeLinkDescription {
     text-decoration: underline;
 }
-/* hbox.dialog-button-box button.dialog-button menupopup {
-    // background: #F0F0F0 !important;
-    background: light-dark(var(--color-white), var(--color-gray-80)) !important;
-    border: 1px solid #CCCCCC !important;
-    padding: 2px !important;
+#openHandler,
+#flashgotHandler,
+.dialog-button-box > .dialog-button {
+    min-height: var(--button-min-height-small, 28px) !important;
+    max-height: var(--button-min-height-small, 28px) !important;
 }
-hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic:hover {
-    // background: #91C9F7 !important;
-    background: color-mix(in srgb, currentColor 17%, transparent);
-}
-hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic hbox.menu-iconic-left {
-    padding: 3px !important;
-}
-hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic label.menu-iconic-text{
-    padding: 3px !important;
-    padding-left: 5px !important;
-    padding-right: 12px !important;
-    align-items: center;
-}
-hbox.dialog-button-box button.dialog-button menupopup menuitem.menuitem-iconic .menu-highlightable-text {
-    display: none;
-} */
 `)
