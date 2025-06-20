@@ -556,7 +556,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             if (isTrue('userChromeJS.downloadPlus.enableSaveTo')) {
                 let saveTo = createEl(document, 'button', {
                     id: 'save-to',
-                    class: 'dialog-button',
+                    part: 'dialog-button',
                     size: 'small',
                     label: LANG.format("save to"),
                     type: 'menu',
