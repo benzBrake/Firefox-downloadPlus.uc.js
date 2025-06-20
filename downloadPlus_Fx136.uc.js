@@ -1234,7 +1234,8 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
     appearance: none;
     padding-block: 2px !important;
     margin: 0;
-    height: calc(var(--button-min-height-small, 28px) - 4px - 1px) !important;
+    min-height: calc(var(--button-min-height-small, 28px) - 4px - 2px) !important;
+    max-height: calc(var(--button-min-height-small, 28px) - 4px - 2px) !important;
 }
 #locationText.invalid {
     outline: 2px solid red !important;
@@ -1247,6 +1248,9 @@ menuseparator:not([hidden=true])+#FlashGot-DownloadManagers-Separator,
     visibility: collapse;
 }
 #encodingConvertButton {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-inline-start: 0 !important;
     min-height: var(--button-min-height-small, 28px) !important;
     max-height: var(--button-min-height-small, 28px) !important;
     min-width: unset !important;
