@@ -22,7 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
-// @note            20250802 修复 Fx140 dropmarker 显示异常
+// @note            20250802 修复 Fx140 dropmarker 显示异常, 强制弹出下载对话框
 // @note            20250620 修复按钮和弹出菜单的一些问题
 // @note            20250610 Fx139
 // @note            20250509 修复文件名无效字符导致下载失败的问题，简化几处 locationText 的调用
@@ -218,6 +218,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             }
         },
         initChrome: async function () {
+            Services.prefs.setBoolPref('browser.download.always_ask_before_handling_new_types', true);
             // 保存按钮无需等待即可点击
             Services.prefs.setIntPref('security.dialog_enable_delay', 0);
             if (isTrue('userChromeJS.downloadPlus.enableRename')) {
