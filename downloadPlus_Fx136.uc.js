@@ -221,6 +221,31 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             Services.prefs.setBoolPref('browser.download.always_ask_before_handling_new_types', true);
             // 保存按钮无需等待即可点击
             Services.prefs.setIntPref('security.dialog_enable_delay', 0);
+
+            let sb = window.userChrome_js?.sb;
+            if (!sb) {
+                sb = Cu.Sandbox(window, {
+                    sandboxPrototype: window,
+                    sameZoneAs: window,
+                });
+
+                /* toSource() is not available in sandbox */
+                Cu.evalInSandbox(`
+          Function.prototype.toSource = window.Function.prototype.toSource;
+          Object.defineProperty(Function.prototype, "toSource", {enumerable : false})
+          Object.prototype.toSource = window.Object.prototype.toSource;
+          Object.defineProperty(Object.prototype, "toSource", {enumerable : false})
+          Array.prototype.toSource = window.Array.prototype.toSource;
+          Object.defineProperty(Array.prototype, "toSource", {enumerable : false})
+      `, sb);
+                window.addEventListener("unload", () => {
+                    setTimeout(() => {
+                        Cu.nukeSandbox(sb);
+                    }, 0);
+                }, { once: true });
+            }
+            this.sb = sb;
+
             if (isTrue('userChromeJS.downloadPlus.enableRename')) {
                 const obsService = Cc['@mozilla.org/observer-service;1'].getService(Ci.nsIObserverService);
                 const RESPONSE_TOPIC = 'http-on-examine-response';
@@ -542,15 +567,8 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     accesskey: 'E',
                     oncommand: function () {
                         const mainwin = Services.wm.getMostRecentWindow("navigator:browser");
-
-                        // 感谢 ycls006
-                        // mainwin.eval("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")")(dialog.mLauncher.source.asciiSpec, null, null, ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
-                        let fnSource = "(function() {" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + "\ninternalSave('" + dialog.mLauncher.source.asciiSpec + "', null, null,'" + ($('#locationText')?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName) + "', null, null, false, null, null, null, null, null, false, null, " + mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser) + ", Services.scriptSecurityManager.getSystemPrincipal());\n})()";
-                        try {
-                            Services.scriptloader.loadSubScript("data:application/javascript;," + encodeURIComponent(fnSource), mainwin);
-                        } catch (e) {
-                            console.error(e);
-                        }
+                        // 感谢 ycls006 / alice0775
+                        Cu.evalInSandbox("(" + mainwin.internalSave.toString().replace("let ", "").replace("var fpParams", "fileInfo.fileExt=null;fileInfo.fileName=aDefaultFileName;var fpParams") + ")", mainwin.DownloadPlus.sb)(dialog.mLauncher.source.asciiSpec, null, null, ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName), null, null, false, null, null, null, null, null, false, null, mainwin.PrivateBrowsingUtils.isBrowserPrivate(mainwin.gBrowser.selectedBrowser), Services.scriptSecurityManager.getSystemPrincipal());
                         close();
                     }
                 });
