@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250802 修复 Fx140 dropmarker 显示异常
 // @note            20250620 修复按钮和弹出菜单的一些问题
 // @note            20250610 Fx139
 // @note            20250509 修复文件名无效字符导致下载失败的问题，简化几处 locationText 的调用
@@ -1281,5 +1282,11 @@ hbox.copied > #completeLinkDescription {
 .dialog-button-box > .dialog-button {
     min-height: var(--button-min-height-small, 28px) !important;
     max-height: var(--button-min-height-small, 28px) !important;
+}
+.button-menu-dropmarker {
+    appearance: none;
+    content: url("chrome://global/skin/icons/arrow-down-12.svg");
+    -moz-context-properties: fill;
+    fill: currentColor;
 }
 `)
