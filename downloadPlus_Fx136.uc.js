@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250826 禁止快速保存后会自动打开文文件，感谢@Cloudy901
 // @note            20250802 修复 Fx140 dropmarker 显示异常, 强制弹出下载对话框
 // @note            20250620 修复按钮和弹出菜单的一些问题
 // @note            20250610 Fx139
@@ -607,6 +608,10 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                             let path = dir.replace(/^\./, Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("ProfD", Ci.nsIFile).path);
                             path = path.endsWith("\\") ? path : path + "\\";
                             file.initWithPath(path + ($("#locationText")?.value?.replace(invalidChars, '_') || dialog.mLauncher.suggestedFileName));
+                            if (dialog.mLauncher.MIMEInfo) {
+                                dialog.mLauncher.MIMEInfo.preferredAction = Ci.nsIMIMEInfo.saveToDisk;
+                                dialog.mLauncher.MIMEInfo.alwaysAskBeforeHandling = false;
+                            }
                             dialog.mLauncher.saveDestinationAvailable(file);
                             dialog.onCancel = function () { };
                             close();
