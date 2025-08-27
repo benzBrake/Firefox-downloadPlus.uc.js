@@ -22,6 +22,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @note userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20250827 修复选择 FlashGot 后点击保存文件无效的问题
 // @note            20250826 禁止快速保存后会自动打开文文件，感谢@Cloudy901
 // @note            20250802 修复 Fx140 dropmarker 显示异常, 强制弹出下载对话框
 // @note            20250620 修复按钮和弹出菜单的一些问题
@@ -624,7 +625,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                 var cached_function = dialog.onOK;
                 return async function (...args) {
                     if ($('#flashgotRadio')?.selected)
-                        return triggerDownload();
+                        return $('#Flashgot-Download-By-Default-Manager').click();
                     else if ($('#locationText')?.value && $('#locationText')?.value != dialog.mLauncher.suggestedFileName) {
                         dialog.onCancel = function () { };
                         let file = await IOUtils.getFile(await Downloads.getPreferredDownloadsDirectory(), $('#locationText').value);
