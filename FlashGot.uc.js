@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.8
+// @version         1.0.9
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.0.9 merge from DownloadPlus_Fx143.uc.js
 // @note            1.0.8 merge from DownloadPlus_Fx135.uc.js
 // @note            1.0.7 Remove Cu.import, per Bug 1881888
 // @note            1.0.6 修复 Referer 获取
@@ -114,6 +115,16 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
     };
     LANG.init();
 
+    const versionGE = (v) => {
+        return Services.vc.compare(Services.appinfo.version, v) >= 0;
+    }
+
+    const processCSS = (css) => {
+        if (versionGE("143a1")) {
+            return css.replaceAll('list-style-image', '--menuitem-icon');
+        }
+    }
+
     const FLASHGOT_OUTPUT_ENCODING = (() => {
         switch (Services.locale.appLocaleAsBCP47) {
             case 'zh-CN': return 'GBK';
@@ -160,7 +171,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     return;
                 }
                 const styleService = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
-                const styleURI = Services.io.newURI("data:text/css," + encodeURIComponent(css));
+                const styleURI = Services.io.newURI("data:text/css," + encodeURIComponent(`#FlashGot-Btn { list-style-image: var(--menuitem-icon); }` + processCSS(css)));
                 if (!styleService.sheetRegistered(styleURI, styleService.AUTHOR_SHEET)) {
                     styleService.loadAndRegisterSheet(styleURI, styleService.AUTHOR_SHEET);
                 }
@@ -290,7 +301,6 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     }
                     if (target.id === 'contentAreaContextMenu') {
                         let item = target.querySelector('#FlashGot-ContextMenu');
-                        item.setAttribute('hidden', !gContextMenu.onLink);
                         let node = target.querySelector('#context-media-eme-separator')?.nextElementSibling;
                         let nums = 0;
                         while (node && node.tagName !== "menuseparator") {
@@ -298,6 +308,17 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                             node = node.nextElementSibling;
                         }
                         target.querySelector('#context-media-eme-separator')?.setAttribute('hidden', !nums);
+                        let status = [];
+                        if (gContextMenu.onLink || (gContextMenu.isTextSelected && gContextMenu.onPlainTextLink)) {
+                            status.push('link');
+                        }
+                        if (gContextMenu.onImage || gContextMenu.onCanvas || gContextMenu.onVideo || gContextMenu.onAudio) {
+                            status.push('media');
+                        }
+                        if (gContextMenu.onTextInput) {
+                            status.push('input');
+                        }
+                        item.setAttribute('status', status.join(' '));
                     }
                 } else if (type === "mouseover") {
                     const btn = target.ownerDocument.querySelector('#FlashGot-Btn');
@@ -835,6 +856,13 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
 }
 .FlashGot-download {
     list-style-image: url("chrome://browser/skin/downloads/downloads.svg");
+}
+#FlashGot-ContextMenu {
+    display: none;
+}
+#FlashGot-ContextMenu[status~="link"],
+#FlashGot-ContextMenu[status~="media"] {
+    display: flex;
 }
 .downloader-item[managerId="BitComet"] {
     list-style-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADcUlEQVQ4T12Ta2hbZQCGn+/kpLltS9J7adps7eqlK047GF3qZUwHOhCpxWyCOH9s+qOgrIMIoqN4+aFQhxX2Q4cIrkgbBoKYKmrLZG02sa51W2fXa2zWZs3aNWkuTU5yjsfIoPr9+fh+vM/38vK+gv+die6uFkMqcsJaZPaaXPVoGmzcuML8xEx/ssh4+lDfT5c2S8S9R6Cny3VfIt1tqizxOj0HsOxsBFGEEBqqmiMdmmL6q89YGL7Yr7h3nWw/2xv+R1sADPX4XPV504j14Udq7Huf1HVmMBgKbJHPFu5kNMSWskpCgW8YP3N6IV9a7WnvHQgXABPvvd5X/uh+r6P1ANr6Opi3ISy2glBJxSgyWcjMjqEsTmNqfoLQ+X4ufX6m/2hw7rAY8h1raaguD1a+2gmxNd2ugqF8B0p0UgcVQy5JLn4bc00TuR/PEYuv43zqOX5+o4PIcmKfuPrm0b7atnavbXsjInmXnM2OsDvQxr9DczejSSq5a99j8bxC5uYwpqlRltI5FFMVgz2f+kX47Re1io63yEcXkCXIuxpITF3Anlokt2M/GGWkyQDxbbVYK5uQLvaS+vMK6sHjjLxzCnHn3SOa/dkjelgKqbgeVGsbK/7XKKlvJuXYpQdqwHx7lLWVCM6n3yf2tQ/LSpR1Ry2Xz/2AiH9wWJNrSilybyeTWYIH9ui/fIixbg9Joxth0JBZQrkWxNr2BYmBT7BE5ojNhpiZ1RBrvlZNkiMYXXZU9260UivG8CCivB7FUo2QdUAmDvNBsntPwfQohrEAybkovy0XIyZPNPZVaXe8JucGiqcdSZ1Gzi4inE7yljodoCJlMhC+zEbdy0ixFPIvXxKaz3Jhtd4vho41tzSY5oLFjg2kxw8hZcf09iTAUYxmrQbdgUgnkJYmyJY9g5rIkR8ZYPAPmM09uK9QpGDHzr4Gy5LX+lAd8paZQoGkqiryBqvuwKLz9GxWo+S37ib5V5wbv84xEi7z+75d8BYA533Pu+5Xr4+U2G7VlLlVvYUZtK1WVJsuNphgXQcoMsqajfGrWUYjzgVH9WOelz7q/bfK9yAV4np3hXzLW1mawewEzSwjJH1MGyrLy/D7TZmJ1Qp/aZOn83jXpjFtnmfA19oicoudxcbYC2o+QTYPac3O7F2zP22s/fjk2eH/zPlvFuZthlH+/JwAAAAASUVORK5CYII=');
