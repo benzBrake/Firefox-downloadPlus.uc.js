@@ -121,8 +121,9 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
 
     const processCSS = (css) => {
         if (versionGE("143a1")) {
-            return css.replaceAll('list-style-image', '--menuitem-icon');
+            css =  `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
         }
+        return css;
     }
 
     const FLASHGOT_OUTPUT_ENCODING = (() => {
@@ -171,7 +172,7 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
                     return;
                 }
                 const styleService = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
-                const styleURI = Services.io.newURI("data:text/css," + encodeURIComponent(`#FlashGot-Btn { list-style-image: var(--menuitem-icon); }` + processCSS(css)));
+                const styleURI = Services.io.newURI("data:text/css," + encodeURIComponent(processCSS(css)));
                 if (!styleService.sheetRegistered(styleURI, styleService.AUTHOR_SHEET)) {
                     styleService.loadAndRegisterSheet(styleURI, styleService.AUTHOR_SHEET);
                 }

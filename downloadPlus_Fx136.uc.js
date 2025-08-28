@@ -43,7 +43,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 // @compatibility   Firefox 139
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize
 // ==/UserScript==
-(async function (gloalCSS, placesCSS, unknownContentCSS) {
+(async function (globalCSS, placesCSS, unknownContentCSS) {
 
     let { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
     const Services = globalThis.Services;
@@ -179,8 +179,9 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 
     const processCSS = (css) => {
         if (versionGE("143a1")) {
-            return css.replaceAll('list-style-image', '--menuitem-icon');
+            css =  `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
         }
+        return css;
     }
 
     /* Do not change below 不懂不要改下边的 */
@@ -217,7 +218,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             const documentURI = location.href.replace(/\?.*$/, '');
             switch (documentURI) {
                 case 'chrome://browser/content/browser.xhtml':
-                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(`#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }` + processCSS(gloalCSS)), windowUtils.AUTHOR_SHEET);
+                    windowUtils.loadSheetUsingURIString("data:text/css;charset=utf-8," + encodeURIComponent(processCSS(globalCSS)), windowUtils.AUTHOR_SHEET);
                     await this.initChrome();
                     break;
                 case 'about:downloads':
