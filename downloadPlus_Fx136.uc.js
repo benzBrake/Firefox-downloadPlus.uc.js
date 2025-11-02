@@ -15,7 +15,6 @@ userChromeJS.downloadPlus.enableRename 下载对话框启用改名功能
 userChromeJS.downloadPlus.enableEncodeConvert 启用编码转换，如果userChromeJS.lus.enableRename没开启，这个选项无效
 userChromeJS.downloadPlus.enableDoubleClickToCopyLink 下载对话框双击复制链接
 userChromeJS.downloadPlus.enableCopyLinkButton 下载对话框启用复制链接按钮
-userChromeJS.downloadPlus.enableDoubleClickToOpen 双击打开
 userChromeJS.downloadPlus.enableDoubleClickToSave 双击保存
 userChromeJS.downloadPlus.enableSaveAndOpen 下载对话框启用保存并打开
 userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
