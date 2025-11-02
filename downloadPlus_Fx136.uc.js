@@ -327,7 +327,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     Downloads.getList(Downloads.ALL).then(list => { removeDownloadView(list, saveAndOpenView) });
                 });
             }
-            if (isTrue('userChromeJS.downloadPlus.showAllDrives ')) {
+            if (isTrue('userChromeJS.downloadPlus.showAllDrives')) {
                 getAllDrives().forEach(drive => {
                     this.SAVE_DIRS.push([drive, LANG.format("disk %s", drive.replace(':\\', ""))])
                 });
