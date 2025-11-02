@@ -179,7 +179,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 
     const processCSS = (css) => {
         if (versionGE("143a1")) {
-            css =  `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
+            css = `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
         }
         return css;
     }
@@ -310,9 +310,21 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                     onDownloadAdded: function (dl) { },
                     onDownloadRemoved: function (dl) { },
                 }
-                Downloads.getList(Downloads.ALL).then(list => { list.addView(saveAndOpenView).then(null, Cu.reportError); });
+                function addDownloadView (list, view) {
+                    const result = list.addView(view);
+                    if (result && typeof result.then === "function") {
+                        result.then(null, Cu.reportError);
+                    }
+                }
+                function removeDownloadView (list, view) {
+                    const result = list.removeView(view);
+                    if (result && typeof result.then === "function") {
+                        result.then(null, Cu.reportError);
+                    }
+                }
+                Downloads.getList(Downloads.ALL).then(list => { addDownloadView(list, saveAndOpenView) });
                 window.addEventListener("beforeunload", () => {
-                    Downloads.getList(Downloads.ALL).then(list => { list.removeView(saveAndOpenView).then(null, Cu.reportError); });
+                    Downloads.getList(Downloads.ALL).then(list => { removeDownloadView(list, saveAndOpenView) });
                 });
             }
             if (isTrue('userChromeJS.downloadPlus.showAllDrives ')) {
@@ -392,7 +404,6 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         this.classList.remove('invalid');
                     }
                 });
-
                 if (isTrue('userChromeJS.downloadPlus.enableEncodeConvert')) {
                     let encodingConvertButton = locationHbox.appendChild(createEl(document, 'button', {
                         id: 'encodingConvertButton',
@@ -474,7 +485,6 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             }
             // 双击保存
             if (isTrue('userChromeJS.downloadPlus.enableDoubleClickToSave')) {
-
                 $('#save').addEventListener('dblclick', (event) => {
                     const { dialog } = event.target.ownerGlobal;
                     dialog.dialogElement('unknownContentType').getButton("accept").click();
