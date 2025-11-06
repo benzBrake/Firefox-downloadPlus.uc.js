@@ -126,6 +126,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                                 if (isNaN(num)) {
                                     result += 'NaN';
                                 } else {
+                                    ``
                                     result += num.toString();
                                 }
                                 valueIndex++;
@@ -277,7 +278,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         }
                     }
                 },
-                onDownloadAdded: function (dl) {
+                onDownloadAdded: async function (dl) {
                     const { DownloadPlus: dp, DownloadsCommon: dc } = window;
                     if (!isTrue('browser.download.always_ask_before_handling_new_types') && isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention') && dp.FLASHGOT_PATH && dp.DEFAULT_MANAGER) {
                         dp._log("尝试使用 flashgot 下载 " + dl.source.url);
@@ -287,11 +288,13 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                         };
                         const refererUrl = dl.source.referrerInfo.originalReferrer.spec;
                         if (refererUrl) options.referer = refererUrl;
-                            dp.downloadByManager("", url, options).then(dl => {
-                                if (dl) dc.deleteDownloadFiles(dl, 2);
-                            }).catch((ex) => {
-                                dp._log("flashgot 下载失败: " + ex);
-                            });
+                        dp.downloadByManager("", url, options).then(_ => {
+                            dp._log("downloadByManager 成功，准备删除下载任务");
+                            dc.deleteDownloadFiles(dl, 2);
+                            dp._log("deleteDownloadFiles 执行完成");
+                        }).catch((ex) => {
+                            dp._log("flashgot 下载失败: " + ex);
+                        });
                     }
                 },
                 onDownloadRemoved: function (dl) { },
@@ -984,7 +987,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             }
         },
         _log (...args) {
-            if (isTrue(this.debug)) {
+            if (this.debug) {
                 Services.wm.getMostRecentWindow("navigator:browser").console.log("DownloadPlus", ...args);
             }
         }
