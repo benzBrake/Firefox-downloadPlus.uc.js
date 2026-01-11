@@ -837,6 +837,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                 this._log("读取 prefs 失败，强制重新扫描", e);
             }
             if (force) {
+                let self = this;
                 const resultPath = handlePath('{TmpD}\\.flashgot.dm.' + Math.random().toString(36).slice(2) + '.txt');
                 this._log("强制刷新，生成临时文件", resultPath);
                 await new Promise((resolve, reject) => {
@@ -846,7 +847,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                             observe (subject, topic) {
                                 switch (topic) {
                                     case "process-finished":
-                                        this._log("FlashGot.exe 执行完毕，准备读取结果");
+                                        self._log("FlashGot.exe 执行完毕，准备读取结果");
                                         try {
                                             // Wait 1s after process to resolve
                                             setTimeout(resolve, 1000);
@@ -855,7 +856,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
                                         }
                                         break;
                                     default:
-                                        this._log("FlashGot.exe 异常结束", topic);
+                                        self._log("FlashGot.exe 异常结束", topic);
                                         reject(topic);
                                         break;
                                 }
