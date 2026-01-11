@@ -902,7 +902,7 @@ userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
             const uri = Services.io.newURI(url);
             const { FLASHGOT_PATH, DL_FILE_STRUCTURE, REFERER_OVERRIDES, USERAGENT_OVERRIDES } = this;
             const { description, mBrowser, isPrivate } = options;
-            const userAgent = (function (o, u, m, c) {
+            let userAgent = (function (o, u, m, c) {
                 for (let d of Object.keys(o)) {
                     // need to implement regex / subdomain process
                     if (u.host.endsWith(d)) return o[d];
