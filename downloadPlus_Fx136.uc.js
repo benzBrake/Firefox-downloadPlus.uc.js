@@ -21,6 +21,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20260113 Bug 1369833 Remove `alertsService.showAlertNotification` call once Firefox 147
 // @note            20251105 新增静默调用 FlashGot下载（Firefox 应如何处理其他文件？选择保存文件(S)后生效）
 // @note            20251103 修复修改文件名后点击保存不遵循“总是询问保存至何处(A)”设置的问题
 // @note            20250827 修复 Fx143 菜单图标的问题
@@ -175,6 +176,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         }
     })();
 
+    /* Do not change below 不懂不要改下边的 */
     const versionGE = (v) => {
         return Services.vc.compare(Services.appinfo.version, v) >= 0;
     }
@@ -186,7 +188,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         return css;
     }
 
-    /* Do not change below 不懂不要改下边的 */
+    const AlertNotification = Components.Constructor(
+        "@mozilla.org/alert-notification;1",
+        "nsIAlertNotification",
+        "initWithObject"
+    );
+
     if (window.DownloadPlus) return;
 
     window.DownloadPlus = {
@@ -404,7 +411,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 设置对话框按钮的访问键
          * @param {Element} dialogFrame - 对话框框架元素
          */
-        _setupDialogAccessKeys(dialogFrame) {
+        _setupDialogAccessKeys (dialogFrame) {
             dialogFrame.getButton('accept').setAttribute('accesskey', 'c');
             dialogFrame.getButton('cancel').setAttribute('accesskey', 'x');
         },
@@ -442,7 +449,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * @param {Element} container - 父容器元素
          * @returns {Element} 输入框元素
          */
-        _createFilenameInput(container) {
+        _createFilenameInput (container) {
             const locationText = container.appendChild(createEl(document, "html:input", {
                 id: "locationText",
                 value: dialog.mLauncher.suggestedFileName,
@@ -466,7 +473,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * @param {Element} container - 父容器元素
          * @param {Element} locationText - 文件名输入框
          */
-        _createEncodingConverter(container, locationText) {
+        _createEncodingConverter (container, locationText) {
             const encodingConvertButton = container.appendChild(createEl(document, 'button', {
                 id: 'encodingConvertButton',
                 type: 'menu',
@@ -511,7 +518,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 获取原始文件名字符串
          * @returns {string} 原始文件名
          */
-        _getOriginalFilenameString() {
+        _getOriginalFilenameString () {
             try {
                 const storedFilename = opener.localStorage.getItem(dialog.mLauncher.source.spec);
                 const urlFilename = dialog.mLauncher.source.asciiSpec.substring(
@@ -533,7 +540,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * @param {string} encoding - 编码名称
          * @param {string} originalString - 原始字符串
          */
-        _createEncodingMenuItem(menupopup, converter, encoding, originalString) {
+        _createEncodingMenuItem (menupopup, converter, encoding, originalString) {
             converter.charset = encoding;
             const menuitem = menupopup.appendChild(document.createXULElement("menuitem"));
             menuitem.value = converter.ConvertToUnicode(originalString).replace(/^"(.+)"$/, "$1");
@@ -544,7 +551,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 设置复制链接功能
          * 包括双击复制和复制按钮
          */
-        _setupCopyLinkFeature() {
+        _setupCopyLinkFeature () {
             const linkContainer = createEl(document, 'hbox', { align: 'center' });
             $("#source").parentNode.after(linkContainer);
 
@@ -563,7 +570,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建双击复制链接的元素
          * @param {Element} container - 父容器元素
          */
-        _createDoubleClickCopyElements(container) {
+        _createDoubleClickCopyElements (container) {
             const downloadUrl = dialog.mLauncher.source.spec;
 
             const label = container.appendChild(createEl(document, 'label', {
@@ -590,7 +597,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建复制链接按钮
          * @param {Element} container - 父容器元素
          */
-        _createCopyLinkButton(container) {
+        _createCopyLinkButton (container) {
             const downloadUrl = dialog.mLauncher.source.spec;
             const self = this;
 
@@ -614,7 +621,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         /**
          * 设置双击保存功能
          */
-        _setupDoubleClickSave() {
+        _setupDoubleClickSave () {
             if (!isTrue('userChromeJS.downloadPlus.enableDoubleClickToSave')) return;
 
             $('#save').addEventListener('dblclick', (event) => {
@@ -652,7 +659,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * @param {Object} downloadPlus - DownloadPlus 对象
          * @returns {Element} FlashGot UI 容器
          */
-        _createFlashgotUI(browserWindow, downloadPlus) {
+        _createFlashgotUI (browserWindow, downloadPlus) {
             const createElem = (tag, attrs, children = []) => {
                 const elem = createEl(document, tag, attrs);
                 children.forEach(child => elem.appendChild(child));
@@ -670,7 +677,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 
                 const sourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
                 const fileName = $("#locationText")?.value?.replace(invalidChars, '_') ||
-                               dialog.mLauncher.suggestedFileName;
+                    dialog.mLauncher.suggestedFileName;
 
                 downloadPlus.downloadByManager(
                     $('#flashgotHandler').getAttribute('manager'),
@@ -724,7 +731,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建 FlashGot 下载管理器选择弹出菜单
          * @returns {Element} 弹出菜单元素
          */
-        _createFlashgotManagerPopup() {
+        _createFlashgotManagerPopup () {
             const menupopup = createEl(document, 'menupopup', {
                 id: 'DownloadPlus-Flashgot-Handler-Popup',
             });
@@ -736,7 +743,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 设置 FlashGot 选择处理器
          * 当选择 FlashGot 时禁用"记住选择"复选框
          */
-        _setupFlashgotSelectionHandler() {
+        _setupFlashgotSelectionHandler () {
             $('#mode').addEventListener("select", () => {
                 const flashgotRadio = $('#flashgotRadio');
                 const rememberChoice = $('#rememberChoice');
@@ -755,7 +762,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 包括"保存并打开"、"另存为"、"保存到"
          * @param {Element} dialogFrame - 对话框框架元素
          */
-        _setupQuickSaveButtons(dialogFrame) {
+        _setupQuickSaveButtons (dialogFrame) {
             if (isTrue('userChromeJS.downloadPlus.enableSaveAndOpen')) {
                 this._createSaveAndOpenButton(dialogFrame);
             }
@@ -773,7 +780,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建"保存并打开"按钮
          * @param {Element} dialogFrame - 对话框框架元素
          */
-        _createSaveAndOpenButton(dialogFrame) {
+        _createSaveAndOpenButton (dialogFrame) {
             const saveAndOpen = createEl(document, 'button', {
                 id: 'save-and-open',
                 label: LANG.format("save and open"),
@@ -797,7 +804,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建"另存为"按钮
          * @param {Element} dialogFrame - 对话框框架元素
          */
-        _createSaveAsButton(dialogFrame) {
+        _createSaveAsButton (dialogFrame) {
             const self = this;
             const saveAs = createEl(document, 'button', {
                 id: 'save-as',
@@ -815,10 +822,10 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         /**
          * 触发"另存为"对话框
          */
-        _triggerSaveAsDialog() {
+        _triggerSaveAsDialog () {
             const mainWindow = Services.wm.getMostRecentWindow("navigator:browser");
             const fileName = $("#locationText")?.value?.replace(invalidChars, '_') ||
-                           dialog.mLauncher.suggestedFileName;
+                dialog.mLauncher.suggestedFileName;
 
             // 感谢 ycls006 / alice0775
             Cu.evalInSandbox(
@@ -838,7 +845,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建"保存到"按钮及菜单
          * @param {Element} dialogFrame - 对话框框架元素
          */
-        _createSaveToButton(dialogFrame) {
+        _createSaveToButton (dialogFrame) {
             const saveTo = createEl(document, 'button', {
                 id: 'save-to',
                 part: 'dialog-button',
@@ -857,7 +864,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 创建"保存到"菜单
          * @returns {Element} 菜单元素
          */
-        _createSaveToMenu() {
+        _createSaveToMenu () {
             const saveToMenu = createEl(document, 'menupopup');
 
             // 添加样式表
@@ -885,7 +892,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * @param {string} dirPath - 目录路径
          * @param {string} dirName - 目录名称
          */
-        _createSaveToMenuItem(menu, dirPath, dirName) {
+        _createSaveToMenuItem (menu, dirPath, dirName) {
             const menuitem = createEl(document, "menuitem", {
                 label: dirName || (dirPath.match(/[^\\/]+$/) || [dirPath])[0],
                 dir: dirPath,
@@ -907,7 +914,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 
                     // 获取文件名
                     const fileName = $("#locationText")?.value?.replace(invalidChars, '_') ||
-                                   dialog.mLauncher.suggestedFileName;
+                        dialog.mLauncher.suggestedFileName;
 
                     file.initWithPath(fullPath + fileName);
 
@@ -930,7 +937,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 重写对话框 OK 处理器
          * 支持 FlashGot 下载和自定义文件名
          */
-        _overrideDialogOKHandler() {
+        _overrideDialogOKHandler () {
             const originalOKHandler = dialog.onOK;
             const self = this;
 
@@ -978,7 +985,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
          * 强制显示对话框选项
          * 确保打开/保存/FlashGot 选项可见
          */
-        _forceShowDialogOptions() {
+        _forceShowDialogOptions () {
             const self = this;
             setTimeout(() => {
                 document.getElementById("normalBox")?.removeAttribute("collapsed");
@@ -1428,6 +1435,9 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      * @param {Function} callback 提示回调，可以不提供
      */
     function alerts (message, title, callback) {
+        const alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
+        const mTitle = title || "DownloadPlus";
+        const mMessage = message + "";
         const callbackObject = callback ? {
             observe: function (subject, topic, data) {
                 if ("alertclickcallback" != topic)
@@ -1435,10 +1445,19 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 callback.call(null);
             }
         } : null;
-        const alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
-        alertsService.showAlertNotification(
-            "chrome://global/skin/icons/info.svg", title || "DownloadPlus",
-            message + "", !!callbackObject, "", callbackObject);
+        if (versionGE('147a1')) {
+            let alert = new AlertNotification({
+                imageURL: 'chrome://global/skin/icons/info.svg',
+                title: mTitle,
+                text: mMessage,
+                textClickable: !!callbackObject,
+            });
+            alertsService.showAlert(alert, callbackObject?.observe);
+        } else {
+            alertsService.show(
+                "chrome://global/skin/icons/info.svg", mTitle,
+                mMessage, !!callbackObject, "", callbackObject);
+        }
     }
 
     function handlePath (path) {
