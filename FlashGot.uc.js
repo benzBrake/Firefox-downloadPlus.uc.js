@@ -9,13 +9,14 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
 */
-// @version         1.0.9
+// @version         1.1.0
 // @license         MIT License
 // @compatibility   Firefox 90
 // @charset         UTF-8
 // @include         main
 // @include         chrome://mozapps/content/downloads/unknownContentType.xhtml
 // @homepageURL     https://github.com/benzBrake/FirefoxCustomize/tree/master/userChromeJS
+// @note            1.1.0 Bug 1369833 Remove `alertsService.showAlertNotification` call once Firefox 147
 // @note            1.0.9 merge from DownloadPlus_Fx143.uc.js
 // @note            1.0.8 merge from DownloadPlus_Fx135.uc.js
 // @note            1.0.7 Remove Cu.import, per Bug 1881888
@@ -115,17 +116,6 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
     };
     LANG.init();
 
-    const versionGE = (v) => {
-        return Services.vc.compare(Services.appinfo.version, v) >= 0;
-    }
-
-    const processCSS = (css) => {
-        if (versionGE("143a1")) {
-            css =  `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
-        }
-        return css;
-    }
-
     const FLASHGOT_OUTPUT_ENCODING = (() => {
         switch (Services.locale.appLocaleAsBCP47) {
             case 'zh-CN': return 'GBK';
@@ -134,6 +124,23 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
             default: return 'UTF-8';
         }
     })();
+
+    const versionGE = (v) => {
+        return Services.vc.compare(Services.appinfo.version, v) >= 0;
+    }
+
+    const processCSS = (css) => {
+        if (versionGE("143a1")) {
+            css = `#DownloadPlus-Btn { list-style-image: var(--menuitem-icon); }\n` + css.replaceAll('list-style-image', '--menuitem-icon');
+        }
+        return css;
+    }
+
+    const AlertNotification = Components.Constructor(
+        "@mozilla.org/alert-notification;1",
+        "nsIAlertNotification",
+        "initWithObject"
+    );
 
     if (location.href.startsWith("chrome://browser/content/browser.x")) {
         const FlashGot = {
@@ -698,19 +705,30 @@ FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/re
         return elem;
     }
 
-    function alerts (aMsg, aTitle, aCallback) {
-        const callback = aCallback ? {
-            observe: (subject, topic) => {
-                if (topic === "alertclickcallback") {
-                    aCallback.call(null);
-                }
+    function alerts (message, title, callback) {
+        const alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
+        const mTitle = title || "FlashGot";
+        const mMessage = message + "";
+        const callbackObject = callback ? {
+            observe: function (subject, topic, data) {
+                if ("alertclickcallback" != topic)
+                    return;
+                callback.call(null);
             }
         } : null;
-        const alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
-        alertsService.showAlertNotification(
-            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJjb250ZXh0LWZpbGwiIGZpbGwtb3BhY2l0eT0iY29udGV4dC1maWxsLW9wYWNpdHkiPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48cGF0aCBkPSJNMTIgMjJDNi40NzcgMjIgMiAxNy41MjMgMiAxMlM2LjQ3NyAyIDEyIDJzMTAgNC40NzcgMTAgMTAtNC40NzcgMTAtMTAgMTB6bTAtMmE4IDggMCAxIDAgMC0xNiA8IDggMCAwIDAgMCAxNnpNMTEgN2gydjJoLTJWN3ptMCA0aDJ2NmgtMnYtNnoiLz48L3N2Zz4=",
-            aTitle || "FlashGot",
-            aMsg + "", !!callback, "", callback);
+        if (versionGE('147a1')) {
+            let alert = new AlertNotification({
+                imageURL: 'chrome://global/skin/icons/info.svg',
+                title: mTitle,
+                text: mMessage,
+                textClickable: !!callbackObject,
+            });
+            alertsService.showAlert(alert, callbackObject?.observe);
+        } else {
+            alertsService.show(
+                "chrome://global/skin/icons/info.svg", mTitle,
+                mMessage, !!callbackObject, "", callbackObject);
+        }
     }
 
     function readText (aFileOrPath, encoding = "UTF-8") {
