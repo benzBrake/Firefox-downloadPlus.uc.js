@@ -465,6 +465,14 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 }
             });
 
+            // 回车键触发保存操作
+            locationText.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    dialog.onCancel = {};
+                    dialog.dialogElement('unknownContentType').getButton("accept").click();
+                }
+            });
+
             return locationText;
         },
 
