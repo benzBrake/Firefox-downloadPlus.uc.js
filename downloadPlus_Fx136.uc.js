@@ -1343,6 +1343,9 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      * @returns {Array<string>} 所有盘符数组
      */
     function getAllDrives () {
+        if (!AppConstants.platform.startsWith("win")) {
+            return [];
+        }
         const lib = ctypes.open("kernel32.dll");
         const GetLogicalDriveStringsW = lib.declare('GetLogicalDriveStringsW', ctypes.winapi_abi, ctypes.unsigned_long, ctypes.uint32_t, ctypes.char16_t.ptr);
         const buffer = new (ctypes.ArrayType(ctypes.char16_t, 1024))();
