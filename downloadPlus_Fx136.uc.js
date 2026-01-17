@@ -55,34 +55,49 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 
     const LANG = {
         'zh-CN': {
+            // 按钮和标签
             "download plus btn": "DownloadPlus",
             "download enhance click to switch default download manager": "下载增强，点击可切换默认下载工具",
+
+            // FlashGot 相关
             "force reload download managers list": "刷新下载工具",
             "reload download managers list finish": "读取FlashGot 支持的下载工具完成，请选择你喜欢的下载工具",
             "download through flashgot": "使用 FlashGot 下载",
             "download by default download manager": "使用默认工具下载",
             "no supported download manager": "没有找到 FlashGot 支持的下载工具",
             "default download manager": "%s（默认）",
+            "no download managers": "没有下载工具",
+            "reloading download managers list": "正在重新读取下载工具列表，请稍后！",
+            "set to default download manger": "设置 %s 为默认下载器",
+
+            // 文件操作
             "file not found": "文件不存在：%s",
             "about download plus": "关于 DownloadPlus",
+
+            // 编码转换
             "original name": "默认编码: ",
             "encoding convert tooltip": "点击转换编码",
+
+            // 复制链接
             "complete link": "链接：",
             "copy link": "复制链接",
             "copied": "复制完成",
             "dobule click to copy link": "双击复制链接",
             "successly copied": "复制成功",
-            "no download managers": "没有下载工具",
-            "force reload download managers list": "重新读取下载工具列表",
-            "reloading download managers list": "正在重新读取下载工具列表，请稍后！",
-            "reload download managers list finish": "读取下载工具列表完成，请选择你喜欢的下载器",
-            "set to default download manger": "设置 %s 为默认下载器",
+
+            // 保存按钮
             "save and open": "保存并打开",
             "save as": "另存为",
             "save to": "保存到",
+
+            // 目录名称
             "desktop": "桌面",
             "downloads folder": "下载",
             "disk %s": "%s 盘",
+
+            // 通用
+            "app name": "DownloadPlus",
+            "error": "错误",
         },
         format (...args) {
             if (!args.length) {
@@ -127,7 +142,6 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                                 if (isNaN(num)) {
                                     result += 'NaN';
                                 } else {
-                                    ``
                                     result += num.toString();
                                 }
                                 valueIndex++;
@@ -1143,7 +1157,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             try {
                 file.initWithPath(path);
                 if (!file.exists()) {
-                    alerts(LANG.format("file not found", path), "error");
+                    alerts(LANG.format("file not found", path), LANG.format("error"));
                     return;
                 }
 
@@ -1447,7 +1461,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      */
     function alerts (message, title, callback) {
         const alertsService = Cc["@mozilla.org/alerts-service;1"].getService(Ci.nsIAlertsService);
-        const mTitle = title || "DownloadPlus";
+        const mTitle = title || LANG.format("app name");
         const mMessage = message + "";
         const callbackObject = callback ? {
             observe: function (subject, topic, data) {
@@ -1559,18 +1573,19 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      * @param {Function|string|undefined} filter Cookie 过滤器
      * @returns 
      */
-    function gatherCookies (link, saveToFile = false, filter) {
-        if (!link) return "";
-        if (!/^https?:\/\//.test(link)) return "";
+    function gatherCookies(link, saveToFile = false, filter) {
+        if (!link || !/^https?:\/\//.test(link)) return "";
+
         const uri = Services.io.newURI(link, null, null);
         let cookies = Services.cookies.getCookiesFromHost(uri.host, {});
-        const cookieSavePath = handlePath("{TmpD}");
 
-        // Apply filter if specified
-        if (filter) cookies = cookies.filter(cookie => filter.includes(cookie.name));
+        // Apply filter if specified and valid
+        if (Array.isArray(filter) && filter.length > 0) {
+            cookies = cookies.filter(cookie => cookie && cookie.name && filter.includes(cookie.name));
+        }
 
-        // Format and save cookies to file if needed
         if (saveToFile) {
+            const cookieSavePath = handlePath("{TmpD}");
             const cookieString = cookies.map(formatCookie).join('');
             const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
             file.initWithPath(cookieSavePath);
@@ -1588,7 +1603,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             return cookies.map(cookie => `${cookie.name}:${cookie.value}`).join("; ");
         }
 
-        function formatCookie (co) {
+        function formatCookie(co) {
             // Format to Netscape type cookie format
             return [
                 `${co.isHttpOnly ? '#HttpOnly_' : ''}${co.host}`,
