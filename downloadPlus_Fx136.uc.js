@@ -21,7 +21,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
-// @note            20260118 改进文件操作大部分使用 IOUtils
+// @note            20260118 改进文件操作大部分使用 IOUtils, 增加链接黑名单防止错误调用外部下载器，完成部分兼容新版 FlashGot 的代码（功能暂时无效）
 // @note            20260113 Bug 1369833 Remove `alertsService.showAlertNotification` call once Firefox 147
 // @note            20251105 新增静默调用 FlashGot下载（Firefox 应如何处理其他文件？选择保存文件(S)后生效）
 // @note            20251103 修复修改文件名后点击保存不遵循“总是询问保存至何处(A)”设置的问题
@@ -70,6 +70,10 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             "no download managers": "没有下载工具",
             "reloading download managers list": "正在重新读取下载工具列表，请稍后！",
             "set to default download manger": "设置 %s 为默认下载器",
+
+            // URL 类型相关
+            "unsupported url for external downloader": "此 URL 类型不支持外部下载器",
+            "url not supported reason": "此 URL 不支持外部下载器：%s",
 
             // 文件操作
             "file not found": "文件不存在：%s",
@@ -191,6 +195,116 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         }
     })();
 
+    /* ========================================
+       URL 类型检查和处理工具函数
+
+       使用正则数组配置不支持的 URL 模式，便于扩充
+       ======================================== */
+
+    /**
+     * 支持外部下载器的 URL 协议列表
+     */
+    const SUPPORTED_EXTERNAL_PROTOCOLS = ['http', 'https', 'ftp', 'ftps'];
+
+    /**
+     * 不支持外部下载器的 URL 模式配置
+     * 每个条目包含：正则表达式 和 原因说明
+     */
+    const URL_PATTERNS_NOT_SUPPORTED = [
+        {
+            pattern: /^blob:/i,
+            reason: "Blob URL（浏览器内存数据）"
+        },
+        {
+            pattern: /^data:/i,
+            reason: "Data URL（内联数据）"
+        },
+        {
+            pattern: /^(about|chrome|resource):/i,
+            reason: "浏览器内部页面"
+        },
+        {
+            pattern: /^file:/i,
+            reason: "本地文件"
+        },
+        {
+            pattern: /^(mailto|javascript|view-source):/i,
+            reason: "特殊协议链接"
+        },
+        {
+            pattern: /\.xpi$/i,
+            reason: "XPI 扩展文件（需浏览器安装）"
+        },
+        {
+            pattern: /xpinstall/i,
+            reason: "扩展安装链接"
+        }
+    ];
+
+    /**
+     * 检查 URL 是否支持外部下载器
+     * @param {nsIURI|string} urlOrUri - URL 字符串或 nsIURI 对象
+     * @returns {boolean} 是否支持外部下载器
+     */
+    function isLinkSupportedByFlashgot(urlOrUri) {
+        let uri;
+        try {
+            if (typeof urlOrUri === 'string') {
+                uri = Services.io.newURI(urlOrUri);
+            } else {
+                uri = urlOrUri;
+            }
+        } catch (e) {
+            return false;
+        }
+
+        const scheme = uri.scheme.toLowerCase();
+
+        // 检查协议是否支持
+        if (!SUPPORTED_EXTERNAL_PROTOCOLS.includes(scheme)) {
+            return false;
+        }
+
+        // 检查是否匹配不支持的 URL 模式
+        const spec = uri.spec;
+        for (const { pattern } of URL_PATTERNS_NOT_SUPPORTED) {
+            if (pattern.test(spec)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 获取不支持外部下载器的原因说明
+     * @param {nsIURI|string} urlOrUri - URL 字符串或 nsIURI 对象
+     * @returns {string|null} 不支持的原因，如果支持则返回 null
+     */
+    function getUnsupportedReason(urlOrUri) {
+        let uri;
+        try {
+            if (typeof urlOrUri === 'string') {
+                uri = Services.io.newURI(urlOrUri);
+            } else {
+                uri = urlOrUri;
+            }
+        } catch (e) {
+            return LANG.format("unsupported url for external downloader");
+        }
+
+        const spec = uri.spec;
+
+        // 检查是否匹配不支持的 URL 模式
+        for (const { pattern, reason } of URL_PATTERNS_NOT_SUPPORTED) {
+            if (pattern.test(spec)) {
+                return LANG.format("url not supported reason", reason);
+            }
+        }
+
+        return null;
+    }
+
     /* Do not change below 不懂不要改下边的 */
     const versionGE = (v) => {
         return Services.vc.compare(Services.appinfo.version, v) >= 0;
@@ -223,6 +337,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path, LANG.format("downloads folder")
         ]],
         DOWNLOAD_MANAGERS: [],
+        NEWER_FLASHGOT: false,
         DL_FILE_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         USERAGENT_OVERRIDES: {},
         REFERER_OVERRIDES: {
@@ -238,7 +353,14 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             flashgotPref = handlePath(flashgotPref);
             const flashgotFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
             flashgotFile.initWithPath(flashgotPref);
-            return this.FLASHGOT_PATH = flashgotFile.exists() ? flashgotFile.path : false;
+            if (flashgotFile.exists()) {
+                if ("cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path)) {
+                    this.NEWER_FLASHGOT = true;
+                }
+                return this.FLASHGOT_PATH = flashgotFile.path;
+            } else {
+                return this.FLASHGOT_PATH = false;
+            }
         },
         get DEFAULT_MANAGER () {
             return Services.prefs.getStringPref(this.PREF_DEFAULT_MANAGER, '');
@@ -309,7 +431,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 },
                 onDownloadAdded: async function (dl) {
                     const { DownloadPlus: dp, DownloadsCommon: dc } = window;
-                    if (!isTrue('browser.download.always_ask_before_handling_new_types') && isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention') && dp.FLASHGOT_PATH && dp.DEFAULT_MANAGER) {
+                    if (!isTrue('browser.download.always_ask_before_handling_new_types') && isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention') && dp.FLASHGOT_PATH && dp.DEFAULT_MANAGER && isLinkSupportedByFlashgot(dl.source.url)) {
                         dp._log("尝试使用 flashgot 下载 " + dl.source.url);
                         const url = dl.source.url;
                         const options = {
@@ -351,6 +473,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 });
             }
             if (isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention')) {
+                console.log("DownloadPlus: 尝试初始化 FlashGot 集成");
                 if (!this.FLASHGOT_PATH) return; // flashgot.exe not found
                 this.reloadSupportedManagers();
                 try {
@@ -666,6 +789,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 return;
             }
 
+            // 检查当前下载 URL 是否支持外部下载器
+            if (!isLinkSupportedByFlashgot(dialog.mLauncher.source)) {
+                this._log("URL 不支持外部下载器，跳过 FlashGot 集成");
+                return;
+            }
+
             // 创建 FlashGot UI 元素
             const flashgotUI = this._createFlashgotUI(browserWindow, downloadPlus);
 
@@ -691,11 +820,13 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 
             const triggerDownload = () => {
                 const { mLauncher, mContext } = dialog;
-                let { source } = mLauncher;
+                const { source } = mLauncher;
 
-                // 处理 blob URL
-                if (source.schemeIs('blob')) {
-                    source = Services.io.newURI(source.spec.slice(5));
+                // 检查 URL 是否支持外部下载器
+                if (!isLinkSupportedByFlashgot(source)) {
+                    const reason = getUnsupportedReason(source);
+                    alerts(reason, LANG.format("error"));
+                    return;
                 }
 
                 const sourceContext = mContext.BrowsingContext.get(mLauncher.browsingContextId);
@@ -1194,10 +1325,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             if (force) {
                 let self = this;
                 const resultPath = handlePath('{TmpD}\\.flashgot.dm.' + Math.random().toString(36).slice(2) + '.txt');
+                const args = this.NEWER_FLASHGOT ? ["--silent", "-f", "txt", "-o", resultPath] : ["-o", resultPath];
+                if (this.debug) args.push("--debug");
                 this._log("强制刷新，生成临时文件", resultPath);
                 await new Promise((resolve, reject) => {
                     // read download managers list from flashgot.exe
-                    this.exec(this.FLASHGOT_PATH, ["-o", resultPath], {
+                    this.exec(this.FLASHGOT_PATH, this.NEWER_FLASHGOT ? ["--silent", "-f", "txt", "-o", resultPath] : ["-o", resultPath], {
                         processObserver: {
                             observe (subject, topic) {
                                 switch (topic) {
@@ -1230,9 +1363,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                         if (lastBracket !== -1) {
                             resultString = resultString.slice(0, lastBracket + 1);
                         }
+                        this._log("读取到下载器列表结果", resultString);
                         let resultJson = JSON.parse(resultString);
+                        this.NEWER_FLASHGOT = true;
                         this.DOWNLOAD_MANAGERS = resultJson.filter(m => m.available).map(m => m.name);
                     } else {
+                        this._log("读取到下载器列表结果", resultString);
                         this.DOWNLOAD_MANAGERS = resultString.split("\n").filter(l => l.includes("|OK")).map(l => l.replace("|OK", ""));
                     }
                     await IOUtils.remove(resultPath, { ignoreAbsent: true });
@@ -1268,6 +1404,14 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 }
             }
             if (!url) return;
+
+            // 检查 URL 是否支持外部下载器
+            if (!isLinkSupportedByFlashgot(url)) {
+                const reason = getUnsupportedReason(url);
+                alerts(reason, LANG.format("error"));
+                return;
+            }
+
             const uri = Services.io.newURI(url);
             const { FLASHGOT_PATH, DL_FILE_STRUCTURE, REFERER_OVERRIDES, USERAGENT_OVERRIDES } = this;
             const { description, mBrowser, isPrivate } = options;
@@ -1303,19 +1447,47 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             if (uaMatched) {
                 userAgent = uaMatched;
             }
-            const initData = replaceArray(DL_FILE_STRUCTURE, [
-                '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
-                '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
-            ], [
-                1, manager, isPrivate, referer, uri.spec, description || '', await gatherCookies(uri.spec), postData,
-                fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
-            ]);
+            let initData, initArgs = [];
+            if (this.NEWER_FLASHGOT) {
+                // 新版的 JSON 格式，还没做完
+                initData = {
+                    dlcount: 1,
+                    dmName: manager,
+                    optype: "download", // 需要继续看源码
+                    referer: referer,
+                    dlpageReferer: downloadPageReferer,
+                    dlpageCookies: downloadPageCookies,
+                    userAgent: userAgent,
+                    links: [
+                        {
+                            url: uri.spec,
+                            desc: description || '',
+                            cookies: await gatherCookies(uri.spec),
+                            postData: postData,
+                            filename: fileName,
+                            extension: extension
+                        }
+                    ]
+                }
+                initData = JSON.stringify(initData);
+            } else {
+                // 旧版本 FlashGot 使用原有格式
+                initData = replaceArray(DL_FILE_STRUCTURE, [
+                    '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
+                    '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
+                ], [
+                    1, manager, isPrivate, referer, uri.spec, description || '', await gatherCookies(uri.spec), postData,
+                    fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
+                ]);
+            }
             this._log("生成 .dl.properties 内容", initData);
             const initFilePath = handlePath(`{TmpD}\\${hashText(uri.spec)}.dl.properties`);
             this._log("写入临时文件", initFilePath);
             await IOUtils.writeUTF8(initFilePath, initData);
+            initArgs = [initFilePath];
+
             await new Promise((resolve, reject) => {
-                this.exec(FLASHGOT_PATH, initFilePath, {
+                this.exec(FLASHGOT_PATH, initArgs, {
                     processObserver: {
                         observe (subject, topic) {
                             switch (topic) {
@@ -1561,6 +1733,65 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         }
 
         return Array.from(hash, (c, i) => toHexString(hash.charCodeAt(i))).join("");
+    }
+
+    function getMD5 (filePath) {
+        try {
+            var file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+            file.initWithPath(filePath);
+
+            if (!file.exists() || !file.isFile()) {
+                return "檔案不存在或不是檔案";
+            }
+
+            // 開啟檔案輸入流
+            var fis = Cc["@mozilla.org/network/file-input-stream;1"]
+                .createInstance(Ci.nsIFileInputStream);
+            fis.init(file, 0x01, 0x04, 0);  // 唯讀 + 正常權限
+
+            // 用 scriptable 包裝，才能呼叫 read()
+            var sis = Cc["@mozilla.org/scriptableinputstream;1"]
+                .createInstance(Ci.nsIScriptableInputStream);
+            sis.init(fis);
+
+            // 初始化 MD5 hasher
+            var ch = Cc["@mozilla.org/security/hash;1"]
+                .createInstance(Ci.nsICryptoHash);
+            ch.init(ch.MD5);
+
+            const CHUNK_SIZE = 8192;  // 8KB 一塊，記憶體友好
+
+            while (true) {
+                let available = sis.available();
+                if (available <= 0) break;
+
+                let toRead = Math.min(available, CHUNK_SIZE);
+                let chunk = sis.read(toRead);  // ← 這裡用 sis.read()，返回 string (binary safe)
+
+                // 轉成 byte array 給 hasher
+                let bytes = new Uint8Array(toRead);
+                for (let i = 0; i < toRead; i++) {
+                    bytes[i] = chunk.charCodeAt(i) & 0xff;
+                }
+
+                ch.update(bytes, toRead);
+            }
+
+            sis.close();
+            fis.close();
+
+            let rawHash = ch.finish(false);
+            let hex = "";
+            for (let i = 0; i < rawHash.length; i++) {
+                let c = rawHash.charCodeAt(i) & 0xff;
+                hex += ("0" + c.toString(16)).slice(-2);
+            }
+
+            return hex.toLowerCase();
+
+        } catch (ex) {
+            return "錯誤：" + ex;
+        }
     }
 
     /**
