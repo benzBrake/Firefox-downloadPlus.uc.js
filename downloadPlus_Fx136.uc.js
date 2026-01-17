@@ -246,7 +246,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      * @param {nsIURI|string} urlOrUri - URL 字符串或 nsIURI 对象
      * @returns {boolean} 是否支持外部下载器
      */
-    function isLinkSupportedByFlashgot(urlOrUri) {
+    function isLinkSupportedByFlashgot (urlOrUri) {
         let uri;
         try {
             if (typeof urlOrUri === 'string') {
@@ -281,7 +281,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
      * @param {nsIURI|string} urlOrUri - URL 字符串或 nsIURI 对象
      * @returns {string|null} 不支持的原因，如果支持则返回 null
      */
-    function getUnsupportedReason(urlOrUri) {
+    function getUnsupportedReason (urlOrUri) {
         let uri;
         try {
             if (typeof urlOrUri === 'string') {
@@ -333,6 +333,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         PREF_FLASHGOT_PATH: 'userChromeJS.downloadPlus.flashgotPath',
         PREF_DEFAULT_MANAGER: 'userChromeJS.downloadPlus.flashgotDefaultManager',
         PREF_DOWNLOAD_MANAGERS: 'userChromeJS.downloadPlus.flashgotDownloadManagers',
+        PREF_ALWAYS_OPEN_PANEL: 'browser.download.alwaysOpenPanel',
         SAVE_DIRS: [[Services.dirsvc.get('Desk', Ci.nsIFile).path, LANG.format("desktop")], [
             Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path, LANG.format("downloads folder")
         ]],
@@ -415,6 +416,8 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             this.sb = sb;
 
             this.URLS_FOR_OPEN = [];
+            const { PREF_ALWAYS_OPEN_PANEL } = this;
+            const alwaysOpenPanel = getBool(PREF_ALWAYS_OPEN_PANEL, true);
             const downloadView = {
                 onDownloadChanged: function (dl) {
                     if (isTrue('userChromeJS.downloadPlus.enableSaveAndOpen')) {
@@ -432,6 +435,9 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 onDownloadAdded: async function (dl) {
                     const { DownloadPlus: dp, DownloadsCommon: dc } = window;
                     if (!isTrue('browser.download.always_ask_before_handling_new_types') && isTrue('userChromeJS.downloadPlus.enableFlashgotIntergention') && dp.FLASHGOT_PATH && dp.DEFAULT_MANAGER && isLinkSupportedByFlashgot(dl.source.url)) {
+                        if (alwaysOpenPanel) {
+                            setBool(PREF_ALWAYS_OPEN_PANEL, false);
+                        }
                         dp._log("尝试使用 flashgot 下载 " + dl.source.url);
                         const url = dl.source.url;
                         const options = {
@@ -448,7 +454,9 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                         });
                     }
                 },
-                onDownloadRemoved: function (dl) { },
+                onDownloadRemoved: function (dl) {
+                    setBool(PREF_ALWAYS_OPEN_PANEL, alwaysOpenPanel);
+                },
             }
             function addDownloadView (list, view) {
                 const result = list.addView(view);
@@ -1537,6 +1545,14 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 
     function isTrue (pref, defaultValue = true) {
         return Services.prefs.getBoolPref(pref, defaultValue) === true;
+    }
+
+    function getBool (pref, defaultValue = false) {
+        return Services.prefs.getBoolPref(pref, defaultValue);
+    }
+
+    function setBool (pref, value) {
+        Services.prefs.setBoolPref(pref, value);
     }
 
     /**
