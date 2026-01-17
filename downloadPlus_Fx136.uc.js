@@ -21,6 +21,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20260118 改进文件操作大部分使用 IOUtils
 // @note            20260113 Bug 1369833 Remove `alertsService.showAlertNotification` call once Firefox 147
 // @note            20251105 新增静默调用 FlashGot下载（Firefox 应如何处理其他文件？选择保存文件(S)后生效）
 // @note            20251103 修复修改文件名后点击保存不遵循“总是询问保存至何处(A)”设置的问题
@@ -994,7 +995,8 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             if (isTrue('browser.download.useDownloadDir')) {
                 dialog.onCancel = function () { };
                 const downloadDir = await Downloads.getPreferredDownloadsDirectory();
-                const file = await IOUtils.getFile(downloadDir, customFilename);
+                const file = await IOUtils.getFile(downloadDir);
+                file.append(customFilename);
                 return dialog.mLauncher.saveDestinationAvailable(file);
             }
 
@@ -1217,12 +1219,26 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                         },
                     });
                 });
-                let resultString = readText(resultPath, FLASHGOT_OUTPUT_ENCODING);
-                this._log("FlashGot 输出原始内容", resultString);
-                this.DOWNLOAD_MANAGERS = resultString.split("\n").filter(l => l.includes("|OK")).map(l => l.replace("|OK", ""));
-                await IOUtils.remove(resultPath, { ignoreAbsent: true });
-                this._log("解析后下载器列表", this.DOWNLOAD_MANAGERS);
-                Services.prefs.setStringPref(this.PREF_DOWNLOAD_MANAGERS, this.DOWNLOAD_MANAGERS.join(","));
+                let resultString = await readText(resultPath, FLASHGOT_OUTPUT_ENCODING);
+
+                if (resultString) {
+                    if (resultString.startsWith('[ { "available"')) {
+                        // Newer FlashGot version outputs JSON 还没做完
+                        resultString = await IOUtils.readUTF8(resultPath);
+                        // 懒得研究为啥多了些没用的字符
+                        const lastBracket = resultString.lastIndexOf(']');
+                        if (lastBracket !== -1) {
+                            resultString = resultString.slice(0, lastBracket + 1);
+                        }
+                        let resultJson = JSON.parse(resultString);
+                        this.DOWNLOAD_MANAGERS = resultJson.filter(m => m.available).map(m => m.name);
+                    } else {
+                        this.DOWNLOAD_MANAGERS = resultString.split("\n").filter(l => l.includes("|OK")).map(l => l.replace("|OK", ""));
+                    }
+                    await IOUtils.remove(resultPath, { ignoreAbsent: true });
+                    this._log("解析后下载器列表", this.DOWNLOAD_MANAGERS);
+                    Services.prefs.setStringPref(this.PREF_DOWNLOAD_MANAGERS, this.DOWNLOAD_MANAGERS.join(","));
+                }
             }
             if (alert) {
                 alerts(LANG.format("reload download managers list finish"));
@@ -1272,12 +1288,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             } else if (options.mLauncher) {
                 const { mLauncher, mSourceContext } = options;
                 downloadPageReferer = mSourceContext.currentURI.spec;
-                downloadPageCookies = gatherCookies(downloadPageReferer);
+                downloadPageCookies = await gatherCookies(downloadPageReferer);
                 fileName = options.fileName || mLauncher.suggestedFileName;
                 try { extension = mLauncher.MIMEInfo.primaryExtension; } catch (e) { }
             }
             if (downloadPageReferer) {
-                downloadPageCookies = gatherCookies(downloadPageReferer);
+                downloadPageCookies = await gatherCookies(downloadPageReferer);
             }
             let refMatched = domainMatch(uri.host, REFERER_OVERRIDES);
             if (refMatched) {
@@ -1291,7 +1307,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
                 '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
             ], [
-                1, manager, isPrivate, referer, uri.spec, description || '', gatherCookies(uri.spec), postData,
+                1, manager, isPrivate, referer, uri.spec, description || '', await gatherCookies(uri.spec), postData,
                 fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
             ]);
             this._log("生成 .dl.properties 内容", initData);
@@ -1346,6 +1362,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             }
         }
     }
+
     function isTrue (pref, defaultValue = true) {
         return Services.prefs.getBoolPref(pref, defaultValue) === true;
     }
@@ -1420,34 +1437,31 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
     }
 
     /**
-     * 从文件读取内容
+     * 从文件读取内容（使用 IOUtils）
      *
      * @param {Ci.nsIFile|string} fileOrPath 文件实例或路径
-     * @param {string} encoding 编码
-     * @returns {string} 文件内容
+     * @param {string} encoding 编码 (支持 UTF-8, GBK, BIG5 等)
+     * @returns {Promise<string>} 文件内容
      */
-    function readText (fileOrPath, encoding = "UTF-8") {
-        encoding || (encoding = "UTF-8");
-        let file;
+    async function readText (fileOrPath, encoding = "UTF-8") {
+        let path;
         if (typeof fileOrPath == "string") {
-            file = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
-            file.initWithPath(fileOrPath);
+            path = fileOrPath;
         } else {
-            file = fileOrPath;
+            path = fileOrPath.path;
         }
-        if (file.exists()) {
-            const stream = Cc['@mozilla.org/network/file-input-stream;1'].createInstance(Ci.nsIFileInputStream);
-            stream.init(file, 0x01, 0, 0);
-            const converterStream = Cc['@mozilla.org/intl/converter-input-stream;1'].createInstance(Ci.nsIConverterInputStream);
-            converterStream.init(stream, encoding, 1024, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
-            let content = '';
-            const data = {};
-            while (converterStream.readString(4096, data)) {
-                content += data.value;
+
+        try {
+            if (encoding.toUpperCase() === "UTF-8") {
+                // IOUtils.readUTF8 专门用于 UTF-8 编码
+                return await IOUtils.readUTF8(path);
+            } else {
+                // 对于其他编码，先读取字节再使用 TextDecoder 转换
+                const bytes = await IOUtils.read(path);
+                return new TextDecoder(encoding).decode(bytes);
             }
-            converterStream.close();
-            return content.replace(/\r\n?/g, '\n');
-        } else {
+        } catch (e) {
+            // 文件不存在或读取失败返回空字符串
             return "";
         }
     }
@@ -1566,14 +1580,14 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
     }
 
     /**
-     * 收集 cookie 并保存到文件
-     * 
+     * 收集 cookie 并保存到文件（使用 IOUtils）
+     *
      * @param {string} link 链接
-     * @param {boolean} saveToFile 是否保存到文件 
+     * @param {boolean} saveToFile 是否保存到文件
      * @param {Function|string|undefined} filter Cookie 过滤器
-     * @returns 
+     * @returns {Promise<string>} Cookie 字符串或文件路径
      */
-    function gatherCookies(link, saveToFile = false, filter) {
+    async function gatherCookies (link, saveToFile = false, filter) {
         if (!link || !/^https?:\/\//.test(link)) return "";
 
         const uri = Services.io.newURI(link, null, null);
@@ -1587,23 +1601,21 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         if (saveToFile) {
             const cookieSavePath = handlePath("{TmpD}");
             const cookieString = cookies.map(formatCookie).join('');
-            const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-            file.initWithPath(cookieSavePath);
-            file.append(`${uri.host}.txt`);
+            const filePath = `${cookieSavePath}\\${uri.host}.txt`;
 
-            if (!file.exists()) file.create(Ci.nsIFile.NORMAL_FILE_TYPE, 0o644);
-
-            const foStream = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
-            foStream.init(file, 0x02 | 0x08 | 0x20, 0o666, 0);
-            foStream.write(cookieString, cookieString.length);
-            foStream.close();
-
-            return file.path;
+            try {
+                // 使用 IOUtils 写入文件，自动处理文件创建和覆盖
+                await IOUtils.writeUTF8(filePath, cookieString);
+                return filePath;
+            } catch (e) {
+                console.error("保存 Cookie 文件失败:", e);
+                return "";
+            }
         } else {
             return cookies.map(cookie => `${cookie.name}:${cookie.value}`).join("; ");
         }
 
-        function formatCookie(co) {
+        function formatCookie (co) {
             // Format to Netscape type cookie format
             return [
                 `${co.isHttpOnly ? '#HttpOnly_' : ''}${co.host}`,
