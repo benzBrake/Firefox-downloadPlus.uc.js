@@ -21,6 +21,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20260330 修复 createEl 对布尔属性处理不正确导致 selected/default/checked 等状态异常，并关闭默认调试日志
 // @note            20260226 修复下载器名称读取存在\r导致可能出现问题
 // @note            20260118 改进文件操作大部分使用 IOUtils, 增加链接黑名单防止错误调用外部下载器，完成部分兼容新版 FlashGot 的代码（功能暂时无效）
 // @note            20260113 Bug 1369833 Remove `alertsService.showAlertNotification` call once Firefox 147
@@ -327,7 +328,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
     if (window.DownloadPlus) return;
 
     window.DownloadPlus = {
-        debug: true,
+        debug: false,
         // ========================================
         // 配置常量
         // ========================================
@@ -1605,12 +1606,21 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
     function createEl (doc, type, attrs = {}) {
         const element = type.startsWith('html:') ? doc.createElementNS('http://www.w3.org/1999/xhtml', type) : doc.createXULElement(type);
         for (const key of Object.keys(attrs)) {
+            const value = attrs[key];
             if (key === 'innerHTML') {
-                element.innerHTML = attrs[key];
+                element.innerHTML = value;
             } else if (key.startsWith('on')) {
-                element.addEventListener(key.slice(2).toLocaleLowerCase(), attrs[key]);
+                element.addEventListener(key.slice(2).toLocaleLowerCase(), value);
+            } else if (typeof value === "boolean") {
+                if (value) {
+                    element.setAttribute(key, "true");
+                } else {
+                    element.removeAttribute(key);
+                }
+            } else if (value !== undefined && value !== null) {
+                element.setAttribute(key, value);
             } else {
-                element.setAttribute(key, attrs[key]);
+                element.removeAttribute(key);
             }
         }
         return element;
