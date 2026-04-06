@@ -21,6 +21,7 @@ userChromeJS.downloadPlus.enableSaveAs 下载对话框启用另存为
 userChromeJS.downloadPlus.enableSaveTo 下载对话框启用保存到
 userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 */
+// @note            20260406 修复 FlashGot/Grabby cookie 格式错误，按请求过滤可用 cookie，补充调试日志并默认开启调试
 // @note            20260330 修复 createEl 对布尔属性处理不正确导致 selected/default/checked 等状态异常，并关闭默认调试日志，修复右键菜单图标异常
 // @note            20260226 修复下载器名称读取存在\r导致可能出现问题
 // @note            20260118 改进文件操作大部分使用 IOUtils, 增加链接黑名单防止错误调用外部下载器，完成部分兼容新版 FlashGot 的代码（功能暂时无效）
@@ -398,6 +399,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 sb = Cu.Sandbox(window, {
                     sandboxPrototype: window,
                     sameZoneAs: window,
+                    freezeBuiltins: false
                 });
 
                 /* toSource() is not available in sandbox */
@@ -1442,12 +1444,22 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             } else if (options.mLauncher) {
                 const { mLauncher, mSourceContext } = options;
                 downloadPageReferer = mSourceContext.currentURI.spec;
-                downloadPageCookies = await gatherCookies(downloadPageReferer);
                 fileName = options.fileName || mLauncher.suggestedFileName;
                 try { extension = mLauncher.MIMEInfo.primaryExtension; } catch (e) { }
             }
             if (downloadPageReferer) {
-                downloadPageCookies = await gatherCookies(downloadPageReferer);
+                downloadPageCookies = await gatherCookies(downloadPageReferer, false, undefined, {
+                    logger: (...args) => this._log(...args),
+                    options,
+                    manager,
+                    targetURL: uri.spec,
+                    referer,
+                    downloadPageReferer,
+                    phase: "download-page"
+                });
+            }
+            if (!referer && downloadPageReferer) {
+                referer = downloadPageReferer;
             }
             let refMatched = domainMatch(uri.host, REFERER_OVERRIDES);
             if (refMatched) {
@@ -1457,6 +1469,18 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             if (uaMatched) {
                 userAgent = uaMatched;
             }
+            const cookieContext = {
+                logger: (...args) => this._log(...args),
+                options,
+                manager,
+                targetURL: uri.spec,
+                referer,
+                downloadPageReferer
+            };
+            const targetCookies = await gatherCookies(uri.spec, false, undefined, {
+                ...cookieContext,
+                phase: "target"
+            });
             let initData, initArgs = [];
             if (this.NEWER_FLASHGOT) {
                 // 新版的 JSON 格式，还没做完
@@ -1472,7 +1496,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                         {
                             url: uri.spec,
                             desc: description || '',
-                            cookies: await gatherCookies(uri.spec),
+                            cookies: targetCookies,
                             postData: postData,
                             filename: fileName,
                             extension: extension
@@ -1486,7 +1510,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                     '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
                     '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
                 ], [
-                    1, manager, isPrivate, referer, uri.spec, description || '', await gatherCookies(uri.spec), postData,
+                    1, manager, isPrivate, referer, uri.spec, description || '', targetCookies, postData,
                     fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
                 ]);
             }
@@ -1837,44 +1861,304 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         return replaceString;
     }
 
+    function getCookieBaseDomain (uri) {
+        const host = uri?.asciiHost || uri?.host || "";
+        if (!host) {
+            return "";
+        }
+        try {
+            return Services.eTLD.getBaseDomainFromHost(host);
+        } catch (e) {
+            return host;
+        }
+    }
+
+    function cloneOriginAttributes (originAttributes) {
+        if (!originAttributes || typeof originAttributes !== "object") {
+            return {};
+        }
+        const clone = {};
+        for (const key of Object.keys(originAttributes)) {
+            const value = originAttributes[key];
+            if (value !== undefined && value !== null && value !== "") {
+                clone[key] = value;
+            }
+        }
+        return clone;
+    }
+
+    function normalizeOriginAttributes (originAttributes, options = {}) {
+        const normalized = cloneOriginAttributes(originAttributes);
+        const browserUserContextId = Number(options.mBrowser?.getAttribute?.("usercontextid") || 0);
+
+        if (options.isPrivate && !normalized.privateBrowsingId) {
+            normalized.privateBrowsingId = 1;
+        }
+        if (browserUserContextId && !normalized.userContextId) {
+            normalized.userContextId = browserUserContextId;
+        }
+        return normalized;
+    }
+
+    function getCookieContextCandidates (options = {}) {
+        return [
+            ["browser.contentPrincipal", options.mBrowser?.contentPrincipal?.originAttributes],
+            ["browser.documentPrincipal", options.mBrowser?.browsingContext?.currentWindowGlobal?.documentPrincipal?.originAttributes],
+            ["sourceContext.documentPrincipal", options.mSourceContext?.currentWindowGlobal?.documentPrincipal?.originAttributes],
+            ["launcher.channel", options.mLauncher?.channel?.loadInfo?.originAttributes],
+            ["launcher.source", options.mLauncher?.source?.loadInfo?.originAttributes],
+            ["selectedBrowser.contentPrincipal", !options.mBrowser ? globalThis.gBrowser?.selectedBrowser?.contentPrincipal?.originAttributes : null],
+            ["fallback", {}]
+        ];
+    }
+
+    function buildCookieLookupPlans (uri, options = {}) {
+        const plans = [];
+        const seen = new Set();
+        const baseDomain = getCookieBaseDomain(uri);
+
+        function addPlan (label, originAttributes) {
+            const normalized = normalizeOriginAttributes(originAttributes, options);
+            const key = `${baseDomain}\n${JSON.stringify(normalized, Object.keys(normalized).sort())}`;
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            plans.push({
+                label,
+                baseDomain,
+                originAttributes: normalized
+            });
+
+            if (normalized.partitionKey) {
+                const unpartitioned = { ...normalized };
+                delete unpartitioned.partitionKey;
+                const fallbackKey = `${baseDomain}\n${JSON.stringify(unpartitioned, Object.keys(unpartitioned).sort())}`;
+                if (!seen.has(fallbackKey)) {
+                    seen.add(fallbackKey);
+                    plans.push({
+                        label: `${label} (without partitionKey)`,
+                        baseDomain,
+                        originAttributes: unpartitioned
+                    });
+                }
+            }
+        }
+
+        for (const [label, originAttributes] of getCookieContextCandidates(options)) {
+            addPlan(label, originAttributes);
+        }
+
+        return plans;
+    }
+
+    function mergeCookies (cookies) {
+        const merged = [];
+        const seen = new Set();
+
+        for (const cookie of cookies) {
+            if (!cookie || !cookie.name) {
+                continue;
+            }
+            const key = [
+                cookie.host,
+                cookie.path,
+                cookie.name,
+                cookie.value,
+                cookie.expires,
+                cookie.isSecure,
+                cookie.isHttpOnly
+            ].join("\u0001");
+            if (!seen.has(key)) {
+                seen.add(key);
+                merged.push(cookie);
+            }
+        }
+
+        return merged;
+    }
+
+    function stripLeadingDot (host) {
+        return String(host || "").replace(/^\./, "");
+    }
+
+    function doesCookieHostMatch (cookie, host) {
+        const requestHost = String(host || "").toLowerCase();
+        const cookieHost = stripLeadingDot(cookie?.host).toLowerCase();
+
+        if (!requestHost || !cookieHost) {
+            return false;
+        }
+        if (cookie.isDomain) {
+            return requestHost === cookieHost || requestHost.endsWith(`.${cookieHost}`);
+        }
+        return requestHost === cookieHost;
+    }
+
+    function doesCookiePathMatch (cookiePath, requestPath) {
+        const normalizedCookiePath = cookiePath || "/";
+        const normalizedRequestPath = requestPath || "/";
+
+        if (normalizedRequestPath === normalizedCookiePath) {
+            return true;
+        }
+        if (!normalizedRequestPath.startsWith(normalizedCookiePath)) {
+            return false;
+        }
+        if (normalizedCookiePath.endsWith("/")) {
+            return true;
+        }
+        return normalizedRequestPath.charAt(normalizedCookiePath.length) === "/";
+    }
+
+    function isCookieExpired (cookie) {
+        return Number(cookie?.expires) > 0 && Number(cookie.expires) * 1000 <= Date.now();
+    }
+
+    function filterApplicableCookies (cookies, uri) {
+        const host = uri?.asciiHost || uri?.host || "";
+        const path = uri?.filePath || uri?.pathQueryRef || "/";
+        const isHttps = uri?.schemeIs?.("https") || uri?.scheme === "https";
+
+        return cookies.filter(cookie => {
+            if (!cookie || !cookie.name) {
+                return false;
+            }
+            if (isCookieExpired(cookie)) {
+                return false;
+            }
+            if (!doesCookieHostMatch(cookie, host)) {
+                return false;
+            }
+            if (!doesCookiePathMatch(cookie.path, path)) {
+                return false;
+            }
+            if (cookie.isSecure && !isHttps) {
+                return false;
+            }
+            return true;
+        });
+    }
+
+    function formatCookieOutput (cookies) {
+        return cookies.map(cookie => `${cookie.name}=${cookie.value}`).join("; ");
+    }
+
+    function formatStandardCookieHeader (cookies) {
+        return cookies.map(cookie => `${cookie.name}=${cookie.value}`).join("; ");
+    }
+
+    function describeCookieOptions (options = {}) {
+        return {
+            isPrivate: Boolean(options.isPrivate),
+            hasBrowser: Boolean(options.mBrowser),
+            hasLauncher: Boolean(options.mLauncher),
+            hasSourceContext: Boolean(options.mSourceContext),
+            hasReferer: Boolean(options.referer),
+            browserUserContextId: Number(options.mBrowser?.getAttribute?.("usercontextid") || 0)
+        };
+    }
+
+    function summarizeLookupPlans (lookupPlans) {
+        return lookupPlans.map(plan => {
+            const detail = plan.error ? `error=${plan.error}` : `count=${plan.count}`;
+            return `${plan.label}[${detail}]`;
+        }).join(", ");
+    }
+
     /**
      * 收集 cookie 并保存到文件（使用 IOUtils）
      *
      * @param {string} link 链接
      * @param {boolean} saveToFile 是否保存到文件
      * @param {Function|string|undefined} filter Cookie 过滤器
+     * @param {Object} context 附加上下文与调试配置
      * @returns {Promise<string>} Cookie 字符串或文件路径
      */
-    async function gatherCookies (link, saveToFile = false, filter) {
-        if (!link || !/^https?:\/\//.test(link)) return "";
+    async function gatherCookies (link, saveToFile = false, filter, context = {}) {
+        if (!link || !/^https?:\/\//.test(link)) {
+            return "";
+        }
 
+        const logger = typeof context.logger === "function" ? context.logger : () => { };
+        const options = context.options || {};
         const uri = Services.io.newURI(link, null, null);
-        let cookies = Services.cookies.getCookiesFromHost(uri.host, {});
+        const host = uri.asciiHost || uri.host || "";
+        const lookupPlans = buildCookieLookupPlans(uri, options);
+        const lookupDebug = [];
+        let cookies = [];
 
-        // Apply filter if specified and valid
+        for (const plan of lookupPlans) {
+            let planCookies = [];
+            try {
+                planCookies = Array.from(Services.cookies.getCookiesFromHost(plan.baseDomain, plan.originAttributes));
+                cookies = mergeCookies(cookies.concat(planCookies));
+                lookupDebug.push({
+                    label: plan.label,
+                    baseDomain: plan.baseDomain,
+                    originAttributes: plan.originAttributes,
+                    count: planCookies.length
+                });
+            } catch (e) {
+                lookupDebug.push({
+                    label: plan.label,
+                    baseDomain: plan.baseDomain,
+                    originAttributes: plan.originAttributes,
+                    error: String(e)
+                });
+            }
+        }
+
+        cookies = filterApplicableCookies(cookies, uri);
+
         if (Array.isArray(filter) && filter.length > 0) {
             cookies = cookies.filter(cookie => cookie && cookie.name && filter.includes(cookie.name));
         }
 
+        const outputString = formatCookieOutput(cookies);
+        logger("Cookie 收集调试", {
+            phase: context.phase || "default",
+            link,
+            host,
+            baseDomain: getCookieBaseDomain(uri),
+            manager: context.manager || "",
+            targetURL: context.targetURL || "",
+            referer: context.referer || "",
+            downloadPageReferer: context.downloadPageReferer || "",
+            sourceOptions: describeCookieOptions(options),
+            lookupPlanSummary: summarizeLookupPlans(lookupDebug),
+            cookieNames: cookies.map(cookie => cookie.name),
+            cookieCount: cookies.length,
+            cookieHeaderLength: outputString.length
+        });
+
         if (saveToFile) {
             const cookieSavePath = handlePath("{TmpD}");
             const cookieString = cookies.map(formatCookie).join('');
-            const filePath = `${cookieSavePath}\\${uri.host}.txt`;
+            const filePath = `${cookieSavePath}\\${host || "cookies"}.txt`;
 
             try {
-                // 使用 IOUtils 写入文件，自动处理文件创建和覆盖
                 await IOUtils.writeUTF8(filePath, cookieString);
+                logger("Cookie 文件已保存", {
+                    phase: context.phase || "default",
+                    filePath,
+                    cookieCount: cookies.length
+                });
                 return filePath;
             } catch (e) {
                 console.error("保存 Cookie 文件失败:", e);
+                logger("Cookie 文件保存失败", {
+                    phase: context.phase || "default",
+                    filePath,
+                    error: String(e)
+                });
                 return "";
             }
-        } else {
-            return cookies.map(cookie => `${cookie.name}:${cookie.value}`).join("; ");
         }
 
+        return outputString;
+
         function formatCookie (co) {
-            // Format to Netscape type cookie format
             return [
                 `${co.isHttpOnly ? '#HttpOnly_' : ''}${co.host}`,
                 co.isDomain ? 'TRUE' : 'FALSE',
