@@ -15,7 +15,7 @@ _依赖 userChrome.js Loader_
 - 另存为
 - 下载提示音
 - 显示完整目录并支持双击复制完整地址
-- 第三方工具下载（依赖 FlashGot）
+- 第三方工具下载（支持 FlashGot 和 Aria2）
 
 ---
 
@@ -29,15 +29,26 @@ _依赖 userChrome.js Loader_
 
 ### 说明
 
-`flashgot.exe` 默认存放路径：
+**FlashGot.exe** 默认存放路径：
 
 > ProfileDir\chrome\UserTools\FlashGot.exe
+
+**Aria2c** 默认存放路径：
+
+> ProfileDir\chrome\UserTools\Aria2\aria2c.exe
+
+Aria2 ZIP 包包含 Aria2c 可执行文件，可从 [Releases](https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases) 下载。
 
 #### 高级首选项（about:config）
 
 - `userChromeJS.DownloadPlus.enableRemoveFromDiskMenuitem` — 启用从硬盘删除右键菜单
 - `userChromeJS.downloadPlus.enableFlashgotIntegration` — 启用 FlashGot 集成
 - `userChromeJS.downloadPlus.flashgotPath` — FlashGot 可执行文件路径
+- `userChromeJS.downloadPlus.aria2Path` — Aria2c 可执行文件路径
+- `userChromeJS.downloadPlus.enableAria2AutoStart` — 启动 Firefox 时自动启动 Aria2 RPC
+- `userChromeJS.downloadPlus.enableAria2RpcSuccessAlert` — Aria2 RPC 添加任务成功时显示提示
+- `userChromeJS.downloadPlus.aria2RpcUrl` — Aria2 RPC 地址（默认：http://127.0.0.1:6800/jsonrpc）
+- `userChromeJS.downloadPlus.aria2RpcSecret` — Aria2 RPC 密钥
 - `userChromeJS.downloadPlus.flashgotManagers` — 下载器列表缓存（一般不需要修改）
 - `userChromeJS.downloadPlus.flashgotDefaultManager` — 默认第三方下载器（一般不需要修改）
 - `userChromeJS.downloadPlus.enableRename` — 启用下载对话框改名功能
@@ -51,7 +62,10 @@ _依赖 userChrome.js Loader_
 - `userChromeJS.downloadPlus.notice.DL_CANCEL` — 下载取消通知音
 - `userChromeJS.downloadPlus.notice.DL_FAILED` — 下载失败通知音路径
 
-FlashGot 支持的下载工具列表见：[pouriap/Grabby](https://github.com/pouriap/Grabby)
+支持的下载工具：
+- FlashGot 支持的工具列表见：[pouriap/Grabby](https://github.com/pouriap/Grabby)
+- Aria2 CLI（命令行模式）
+- Aria2 RPC（Web 接口模式，支持自动启动）
 
 ---
 
@@ -61,10 +75,10 @@ FlashGot 支持的下载工具列表见：[pouriap/Grabby](https://github.com/po
 const DOWNLOAD_RULES = [
   {
     url: "匹配地址，支持 * 和 ? 或者以 ^ 开头的正则表达式",
-    operate: "操作类型，支持 'save' / 'save-as' / 'flashgot'",
+    operate: "操作类型，支持 'save' / 'save-as' / 'flashgot' / 'aria2' / 'aria2-web'",
     size: "文件大小条件",
     saveTo: "保存到的路径，仅对 'save' 操作有效",
-    manager: "下载工具名称，进 FlashGot 操作有用",
+    manager: "下载工具名称，对 flashgot / aria2 / aria2-web 操作有用",
   },
 ];
 ```
@@ -83,9 +97,10 @@ const DOWNLOAD_RULES = [
 >
 > kb < 100
 
-### 如何下载 FlashGot.exe
+### 如何下载 FlashGot.exe 和 Aria2
 
-https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/download/v2023.05.11/FlashGot.exe
+- **FlashGot.exe**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/download/v2023.05.11/FlashGot.exe
+- **Aria2.zip**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases（包含 aria2c.exe）
 
 ### 本地化(Localization)
 

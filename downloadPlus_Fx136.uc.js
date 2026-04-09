@@ -8,6 +8,7 @@
 userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
 userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
 FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
+Aria2 下载：https://cdn.jsdmirror.com/gh/benzBrake/Firefox-downloadPlus.uc.js@main/files/Aria2.zip
 比如 \\chrome\\UserTools\\FlashGot.exe，需要使用\\替代\
 userChromeJS.downloadPlus.aria2Path aria2c 可执行文件路径
 userChromeJS.downloadPlus.enableAria2AutoStart 启动 Firefox 时自动启动 Aria2 RPC
