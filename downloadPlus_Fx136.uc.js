@@ -157,10 +157,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             "log force refresh temp file": "强制刷新，生成临时文件",
             "log flashgot process finished": "FlashGot.exe 执行完毕，准备读取结果",
             "log flashgot process failed": "FlashGot.exe 异常结束",
+            "log flashgot list scan start": "开始调用 FlashGot 扫描下载器列表",
+            "log flashgot download start": "开始调用 FlashGot 提交下载任务",
+            "log flashgot download finished": "FlashGot 下载任务提交完成",
+            "log flashgot download failed": "FlashGot 下载任务提交失败",
             "log managers raw result": "读取到下载器列表结果",
             "log managers parsed": "解析后下载器列表",
-            "log generate dl properties": "生成 .dl.properties 内容",
-            "log write temp file": "写入临时文件",
             "toggle aria2 autostart": "启动 Firefox 时自动启动 Aria2 RPC",
             "toggle aria2 success alert": "Aria2 RPC 添加任务成功时显示提示",
             "aria2 autostart enabled": "已启用 Firefox 启动时自动启动 Aria2 RPC",
@@ -281,10 +283,12 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             "log force refresh temp file": "Force refresh, generating temp file",
             "log flashgot process finished": "FlashGot.exe finished, preparing to read results",
             "log flashgot process failed": "FlashGot.exe exited abnormally",
+            "log flashgot list scan start": "Starting the FlashGot download manager scan",
+            "log flashgot download start": "Starting the FlashGot download task submission",
+            "log flashgot download finished": "The FlashGot download task was submitted",
+            "log flashgot download failed": "The FlashGot download task failed to submit",
             "log managers raw result": "Raw download manager list result",
             "log managers parsed": "Parsed download manager list",
-            "log generate dl properties": "Generating .dl.properties content",
-            "log write temp file": "Writing temp file",
             "toggle aria2 autostart": "Auto-start Aria2 RPC when Firefox starts",
             "toggle aria2 success alert": "Show notification when Aria2 RPC task succeeds",
             "aria2 autostart enabled": "Enabled auto-start Aria2 RPC when Firefox starts",
@@ -401,15 +405,6 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
     }
 
     LANG.init();
-
-    const LEGACY_FLASHGOT_OUTPUT_ENCODING = (() => {
-        switch (Services.locale.appLocaleAsBCP47) {
-            case 'zh-CN': return 'GBK';
-            case 'zh-TW':
-            case 'zh-HK': return 'BIG5';
-            default: return 'UTF-8';
-        }
-    })();
 
     /* ========================================
        URL 类型检查和处理工具函数
@@ -567,8 +562,6 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             Services.dirsvc.get('DfltDwnld', Ci.nsIFile).path, LANG.format("downloads folder")
         ]],
         DOWNLOAD_MANAGERS: [],
-        NEWER_FLASHGOT: false,
-        DL_FILE_STRUCTURE: `{num};{download-manager};{is-private};;\n{referer}\n{url}\n{description}\n{cookies}\n{post-data}\n{filename}\n{extension}\n{download-page-referer}\n{download-page-cookies}\n\n\n{user-agent}`,
         USERAGENT_OVERRIDES: {
             'd.pcs.baidu.com': 'pan.baidu.com'
         },
@@ -585,23 +578,15 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         SECURITY_DIALOG_DELAY: 0,        // 安全对话框延迟(禁用)
         get FLASHGOT_PATH () {
             delete this.FLASHGOT_PATH;
-            let flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT_PATH, "\\chrome\\UserTools\\FlashGot.exe");
-            flashgotPref = handlePath(flashgotPref);
-            const flashgotFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
-            flashgotFile.initWithPath(flashgotPref);
-            if (flashgotFile.exists()) {
-                const fileVersion = getFileVersion(flashgotFile.path);
-                if (fileVersion) {
-                    try {
-                        this.NEWER_FLASHGOT = Services.vc.compare(fileVersion, "0.60.1.0") >= 0;
-                    } catch (ex) {
-                        this.NEWER_FLASHGOT = "cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path);
-                    }
-                } else {
-                    this.NEWER_FLASHGOT = "cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path);
-                }
-                return this.FLASHGOT_PATH = flashgotFile.path;
-            } else {
+            let flashgotPref = "";
+            try {
+                flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT_PATH, "\\chrome\\UserTools\\FlashGot.exe");
+                flashgotPref = handlePath(flashgotPref);
+                const flashgotFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
+                flashgotFile.initWithPath(flashgotPref);
+                return this.FLASHGOT_PATH = flashgotFile.exists() && flashgotFile.isFile() ? flashgotFile.path : false;
+            } catch (ex) {
+                console.warn("Invalid FlashGot path:", flashgotPref, ex);
                 return this.FLASHGOT_PATH = false;
             }
         },
@@ -2428,7 +2413,13 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             let process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
             if (options.startHidden) process.startHidden = true;
             try {
-                file.initWithPath(path);
+                if (typeof path !== "string" || !path.trim()) {
+                    if (!options.silentErrors) {
+                        alerts(LANG.format("file not found", path || "FlashGot.exe"), LANG.format("error"));
+                    }
+                    return false;
+                }
+                file.initWithPath(path.trim());
                 if (!file.exists()) {
                     if (!options.silentErrors) {
                         alerts(LANG.format("file not found", path), LANG.format("error"));
@@ -2497,38 +2488,74 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                 }, reject);
             });
         },
-        async runNewFlashgotListScan (resultPath) {
-            const script = [
-                "$ErrorActionPreference = 'Stop'",
-                "$encoding = New-Object System.Text.UTF8Encoding -ArgumentList $false",
-                `$exe = ${this.toPowerShellStringLiteral(this.FLASHGOT_PATH)}`,
-                `$out = ${this.toPowerShellStringLiteral(resultPath)}`,
-                "$result = @(& $exe)",
-                "[System.IO.File]::WriteAllText($out, [string]::Join([Environment]::NewLine, $result), $encoding)",
-            ].join("; ");
+        async execAndWait (path, args, options = {}) {
+            return await new Promise((resolve, reject) => {
+                let settled = false;
+                const finish = value => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(value);
+                };
+                const fail = error => {
+                    if (settled) return;
+                    settled = true;
+                    reject(error);
+                };
 
-            await this.execWithPowerShell(script, { startHidden: true, silentErrors: true });
+                this.exec(path, args, {
+                    ...options,
+                    processObserver: {
+                        observe (subject, topic) {
+                            if (topic !== "process-finished") {
+                                fail(new Error(String(topic)));
+                                return;
+                            }
+
+                            let succeeded = true;
+                            try {
+                                succeeded = subject.QueryInterface(Ci.nsIProcess).exitValue === 0;
+                            } catch (ex) { }
+                            setTimeout(() => finish(succeeded), options.resolveDelay ?? 100);
+                        }
+                    }
+                }).then(started => {
+                    if (!started) finish(false);
+                }, fail);
+            });
         },
-        async runNewFlashgotDownload (payload) {
+        async runFlashgotListScan (resultPath) {
+            this._log(LANG.format("log flashgot list scan start"), {
+                executable: this.FLASHGOT_PATH,
+                resultPath
+            });
+            const finished = await this.execAndWait(this.FLASHGOT_PATH, ["--list-json", resultPath], {
+                startHidden: true,
+                silentErrors: true
+            });
+            if (!finished) throw new Error("FlashGot manager scan failed");
+        },
+        async runFlashgotDownload (payload) {
             const inputPath = handlePath('{TmpD}\\flashgot.job.' + Math.random().toString(36).slice(2) + '.json');
-            const outputPath = handlePath('{TmpD}\\flashgot.job.' + Math.random().toString(36).slice(2) + '.out.txt');
-            const script = [
-                "$ErrorActionPreference = 'Stop'",
-                "$encoding = New-Object System.Text.UTF8Encoding -ArgumentList $false",
-                `$exe = ${this.toPowerShellStringLiteral(this.FLASHGOT_PATH)}`,
-                `$inputPath = ${this.toPowerShellStringLiteral(inputPath)}`,
-                `$outputPath = ${this.toPowerShellStringLiteral(outputPath)}`,
-                "$json = [System.IO.File]::ReadAllText($inputPath, [System.Text.Encoding]::UTF8)",
-                "$result = @($json | & $exe -)",
-                "[System.IO.File]::WriteAllText($outputPath, [string]::Join([Environment]::NewLine, $result), $encoding)",
-            ].join("; ");
+            this._log(LANG.format("log flashgot download start"), {
+                executable: this.FLASHGOT_PATH,
+                inputPath
+            });
 
             try {
                 await IOUtils.writeUTF8(inputPath, payload);
-                return await this.execWithPowerShell(script, { startHidden: true, silentErrors: true, resolveDelay: 1000 });
+                const finished = await this.execAndWait(this.FLASHGOT_PATH, ["--job-json", inputPath], {
+                    startHidden: true,
+                    silentErrors: true,
+                    resolveDelay: 1000
+                });
+                if (!finished) throw new Error("FlashGot download failed");
+                this._log(LANG.format("log flashgot download finished"), { inputPath });
+                return true;
+            } catch (ex) {
+                this._log(LANG.format("log flashgot download failed"), ex);
+                throw ex;
             } finally {
                 await IOUtils.remove(inputPath, { ignoreAbsent: true });
-                await IOUtils.remove(outputPath, { ignoreAbsent: true });
             }
         },
         reloadSupportedManagers: async function (force = false, alert = false, callback) {
@@ -2552,59 +2579,19 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                         let scannedManagers = [];
                         const resultPath = handlePath('{TmpD}\\.flashgot.dm.' + Math.random().toString(36).slice(2) + '.txt');
                         this._log(LANG.format("log force refresh temp file"), resultPath);
-                        if (this.NEWER_FLASHGOT) {
-                            await this.runNewFlashgotListScan(resultPath);
+                        try {
+                            await this.runFlashgotListScan(resultPath);
                             self._log(LANG.format("log flashgot process finished"));
-                        } else {
-                            const args = ["-o", resultPath];
-                            if (this.debug) args.push("--debug");
-                            await new Promise((resolve, reject) => {
-                                // read download managers list from flashgot.exe
-                                this.exec(this.FLASHGOT_PATH, args, {
-                                    processObserver: {
-                                        observe (subject, topic) {
-                                            switch (topic) {
-                                                case "process-finished":
-                                                    self._log(LANG.format("log flashgot process finished"));
-                                                    try {
-                                                        // Wait 1s after process to resolve
-                                                        setTimeout(resolve, 1000);
-                                                    } catch (ex) {
-                                                        reject(ex);
-                                                    }
-                                                    break;
-                                                default:
-                                                    self._log(LANG.format("log flashgot process failed"), topic);
-                                                    reject(topic);
-                                                    break;
-                                            }
-                                        }
-                                    },
-                                });
-                            });
-                        }
-                        let resultString = await readText(resultPath, this.NEWER_FLASHGOT ? "UTF-8" : LEGACY_FLASHGOT_OUTPUT_ENCODING);
-
-                        if (resultString) {
-                            if (this.NEWER_FLASHGOT) {
-                                resultString = resultString.replace(/^\uFEFF/, '').trim();
-                                const firstBracket = resultString.indexOf('[');
-                                const lastBracket = resultString.lastIndexOf(']');
-                                if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-                                    resultString = resultString.slice(firstBracket, lastBracket + 1);
-                                }
-                                this._log(LANG.format("log managers raw result"), resultString);
-                                let resultJson = JSON.parse(resultString);
-                                scannedManagers = resultJson.filter(m => m.available).map(m => m.name);
-                            } else {
-                                this._log(LANG.format("log managers raw result"), resultString);
-                                scannedManagers = resultString.split("\n").filter(l => l.includes("|OK")).map(l => l.replace("|OK", "").replace(/\r$/, '').trim());
-                            }
-                            await IOUtils.remove(resultPath, { ignoreAbsent: true });
+                            const resultString = (await readText(resultPath, "UTF-8")).replace(/^\uFEFF/, '').trim();
+                            this._log(LANG.format("log managers raw result"), resultString);
+                            const resultJson = JSON.parse(resultString);
+                            scannedManagers = resultJson.filter(m => m.available).map(m => m.name);
                             this._log(LANG.format("log managers parsed"), scannedManagers);
                             Services.prefs.setStringPref(this.PREF_DOWNLOAD_MANAGERS, scannedManagers.join(","));
+                            return scannedManagers;
+                        } finally {
+                            await IOUtils.remove(resultPath, { ignoreAbsent: true });
                         }
-                        return scannedManagers;
                     })();
                     const clearReloadPromise = () => {
                         if (sharedState.flashgotManagersReloadPromise && sharedState.flashgotManagersReloadKey === reloadKey) {
@@ -2654,8 +2641,8 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             }
 
             const uri = Services.io.newURI(url);
-            const { FLASHGOT_PATH, DL_FILE_STRUCTURE, REFERER_OVERRIDES, USERAGENT_OVERRIDES } = this;
-            const { description, mBrowser, isPrivate = false } = options;
+            const { FLASHGOT_PATH, REFERER_OVERRIDES, USERAGENT_OVERRIDES } = this;
+            const { description, mBrowser } = options;
             let userAgent = (function (o, u, m, c) {
                 for (let d of Object.keys(o)) {
                     // need to implement regex / subdomain process
@@ -2748,69 +2735,31 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
                     package: mBrowser?.contentTitle || gContextMenu?.linkTextStr || 'FlashGot'
                 });
             }
-            let initData, initArgs = [];
-            if (this.NEWER_FLASHGOT) {
-                initData = {
-                    dlcount: 1,
-                    dmName: manager,
-                    optype: 0,
-                    referer: referer,
-                    dlpageReferer: downloadPageReferer,
-                    dlpageCookies: downloadPageCookies,
-                    useragent: userAgent,
-                    links: [
-                        {
-                            url: uri.spec,
-                            desc: description || '',
-                            cookies: targetCookies,
-                            postdata: postData,
-                            filename: fileName,
-                            extension: extension
-                        }
-                    ]
-                }
-                initData = JSON.stringify(initData);
-            } else {
-                // 旧版本 FlashGot 使用原有格式
-                initData = replaceArray(DL_FILE_STRUCTURE, [
-                    '{num}', '{download-manager}', '{is-private}', '{referer}', '{url}', '{description}', '{cookies}', '{post-data}',
-                    '{filename}', '{extension}', '{download-page-referer}', '{download-page-cookies}', '{user-agent}'
-                ], [
-                    1, manager, isPrivate, referer, uri.spec, description || '', targetCookies, postData,
-                    fileName, extension, downloadPageReferer, downloadPageCookies, userAgent
-                ]);
+            if (!FLASHGOT_PATH) {
+                alerts(LANG.format("file not found", "FlashGot.exe"), LANG.format("error"));
+                return false;
             }
-            this._log(LANG.format("log generate dl properties"), initData);
-            if (this.NEWER_FLASHGOT) {
-                await this.runNewFlashgotDownload(initData);
-                return true;
-            }
-            const initFilePath = handlePath(`{TmpD}\\${hashText(uri.spec)}.dl.properties`);
-            this._log(LANG.format("log write temp file"), initFilePath);
-            await IOUtils.writeUTF8(initFilePath, initData);
-            initArgs = [initFilePath];
-
-            await new Promise((resolve, reject) => {
-                this.exec(FLASHGOT_PATH, initArgs, {
-                    processObserver: {
-                        observe (subject, topic) {
-                            switch (topic) {
-                                case "process-finished":
-                                    try {
-                                        // Wait 1s after process to resolve
-                                        setTimeout(resolve, 1000);
-                                    } catch (ex) {
-                                        reject(ex);
-                                    }
-                                    break;
-                                default:
-                                    reject(topic);
-                                    break;
-                            }
-                        }
-                    },
-                });
+            const payload = JSON.stringify({
+                dlcount: 1,
+                dmName: manager,
+                optype: 0,
+                referer,
+                dlpageReferer: downloadPageReferer,
+                dlpageCookies: downloadPageCookies,
+                useragent: userAgent,
+                links: [
+                    {
+                        url: uri.spec,
+                        desc: description || '',
+                        cookies: targetCookies,
+                        postdata: postData,
+                        filename: fileName,
+                        extension
+                    }
+                ]
             });
+            await this.runFlashgotDownload(payload);
+            return true;
             function domainMatch (domain, domainCollections) {
                 let isObject = typeof domainCollections === 'object', isMatch = false;
                 if (isObject && !Array.isArray(domainCollections)) {
@@ -3276,150 +3225,6 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
             }
         }
         return path;
-    }
-
-    /**
-     * 计算文本的哈希值
-     *
-     * @param {string} text 需要计算的文本
-     * @param {string} type 哈希类型
-     * @returns {string} 哈希值
-     */
-    function hashText (text, type) {
-        if (!(typeof text == 'string' || text instanceof String)) {
-            text = "";
-        }
-
-        // Bug 1851797 - Remove nsIScriptableUnicodeConverter convertToByteArray and convertToInputStream
-        const data = new TextEncoder("utf-8").encode(text);
-
-        if (Ci.nsICryptoHash[type]) {
-            type = Ci.nsICryptoHash[type]
-        } else {
-            type = 2;
-        }
-        const hasher = Cc["@mozilla.org/security/hash;1"].createInstance(
-            Ci.nsICryptoHash
-        );
-
-        hasher.init(type);
-        hasher.update(data, data.length);
-        const hash = hasher.finish(false);
-
-        function toHexString (charCode) {
-            return ("0" + charCode.toString(16)).slice(-2);
-        }
-
-        return Array.from(hash, (c, i) => toHexString(hash.charCodeAt(i))).join("");
-    }
-
-    function getFileVersion (filePath) {
-        if (!AppConstants.platform.startsWith("win")) return "";
-
-        let outputFile = null;
-        try {
-            const powerShellFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
-            powerShellFile.initWithPath(handlePath('{SysD}\\WindowsPowerShell\\v1.0\\powershell.exe'));
-            if (!powerShellFile.exists()) return "";
-
-            outputFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
-            outputFile.initWithPath(handlePath('{TmpD}\\flashgot.version.' + Math.random().toString(36).slice(2) + '.txt'));
-
-            const toPowerShellStringLiteral = value => "'" + String(value).replace(/'/g, "''") + "'";
-            const script = [
-                "$ErrorActionPreference = 'Stop'",
-                `$version = (Get-Item -LiteralPath ${toPowerShellStringLiteral(filePath)}).VersionInfo.FileVersion`,
-                `[System.IO.File]::WriteAllText(${toPowerShellStringLiteral(outputFile.path)}, [string]$version, [System.Text.Encoding]::UTF8)`,
-            ].join("; ");
-            const process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
-            process.init(powerShellFile);
-            const args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script];
-            process.runw(true, args, args.length);
-
-            return outputFile.exists() ? readText(outputFile.path, "UTF-8").trim() : "";
-        } catch (ex) {
-            console.error("Failed to read FlashGot file version:", ex);
-            return "";
-        } finally {
-            try {
-                if (outputFile?.exists()) outputFile.remove(false);
-            } catch (ex) { }
-        }
-    }
-
-    function getMD5 (filePath) {
-        try {
-            var file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-            file.initWithPath(filePath);
-
-            if (!file.exists() || !file.isFile()) {
-                return "檔案不存在或不是檔案";
-            }
-
-            // 開啟檔案輸入流
-            var fis = Cc["@mozilla.org/network/file-input-stream;1"]
-                .createInstance(Ci.nsIFileInputStream);
-            fis.init(file, 0x01, 0x04, 0);  // 唯讀 + 正常權限
-
-            // 用 scriptable 包裝，才能呼叫 read()
-            var sis = Cc["@mozilla.org/scriptableinputstream;1"]
-                .createInstance(Ci.nsIScriptableInputStream);
-            sis.init(fis);
-
-            // 初始化 MD5 hasher
-            var ch = Cc["@mozilla.org/security/hash;1"]
-                .createInstance(Ci.nsICryptoHash);
-            ch.init(ch.MD5);
-
-            const CHUNK_SIZE = 8192;  // 8KB 一塊，記憶體友好
-
-            while (true) {
-                let available = sis.available();
-                if (available <= 0) break;
-
-                let toRead = Math.min(available, CHUNK_SIZE);
-                let chunk = sis.read(toRead);  // ← 這裡用 sis.read()，返回 string (binary safe)
-
-                // 轉成 byte array 給 hasher
-                let bytes = new Uint8Array(toRead);
-                for (let i = 0; i < toRead; i++) {
-                    bytes[i] = chunk.charCodeAt(i) & 0xff;
-                }
-
-                ch.update(bytes, toRead);
-            }
-
-            sis.close();
-            fis.close();
-
-            let rawHash = ch.finish(false);
-            let hex = "";
-            for (let i = 0; i < rawHash.length; i++) {
-                let c = rawHash.charCodeAt(i) & 0xff;
-                hex += ("0" + c.toString(16)).slice(-2);
-            }
-
-            return hex.toLowerCase();
-
-        } catch (ex) {
-            return "錯誤：" + ex;
-        }
-    }
-
-    /**
-     * 文本串替换
-     *
-     * @param {string} replaceString 需要处理的文本串
-     * @param {Array} find 需要被替换的文本串
-     * @param {Array} replace 替换的文本串
-     * @returns {string} 替换后的文本串
-     */
-    function replaceArray (replaceString, find, replace) {
-        for (let i = 0; i < find.length; i++) {
-            const regex = new RegExp(find[i], "g");
-            replaceString = replaceString.replace(regex, replace[i]);
-        }
-        return replaceString;
     }
 
     function getCookieBaseDomain (uri) {
