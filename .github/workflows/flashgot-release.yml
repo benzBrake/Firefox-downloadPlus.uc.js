@@ -1,0 +1,332 @@
+name: Sync FlashGot Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flashgot-release-main
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPOSITORY: benzBrake/Grabby-FlashGot
+  UPSTREAM_BRANCH: master
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_release: ${{ steps.detect.outputs.needs_release }}
+      upstream_sha: ${{ steps.detect.outputs.upstream_sha }}
+      upstream_short_sha: ${{ steps.detect.outputs.upstream_short_sha }}
+      source_date: ${{ steps.detect.outputs.source_date }}
+    steps:
+      - name: Checkout upstream source history
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPOSITORY }}
+          ref: ${{ env.UPSTREAM_BRANCH }}
+          fetch-depth: 0
+          path: upstream
+          persist-credentials: false
+
+      - name: Read latest release marker
+        id: latest-release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            try {
+              const response = await github.rest.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              const body = response.data.body || "";
+              const match = body.match(/Grabby-FlashGot commit:\s*([0-9a-f]{40})/i);
+              core.setOutput("sha", match ? match[1].toLowerCase() : "");
+              const requiredAssets = ["FlashGot.exe", "Aria2.zip"];
+              const actualAssets = new Set((response.data.assets || []).map((asset) => asset.name));
+              core.setOutput("complete", requiredAssets.every((asset) => actualAssets.has(asset)) ? "true" : "false");
+            } catch (error) {
+              if (error.status === 404) {
+                core.setOutput("sha", "");
+                core.setOutput("complete", "false");
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Detect build-relevant upstream changes
+        id: detect
+        shell: pwsh
+        env:
+          LAST_RELEASE_SHA: ${{ steps.latest-release.outputs.sha }}
+          LATEST_RELEASE_COMPLETE: ${{ steps.latest-release.outputs.complete }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+
+          $upstreamSha = (git -C upstream rev-parse HEAD).Trim().ToLowerInvariant()
+          $upstreamShortSha = $upstreamSha.Substring(0, 7)
+          $sourceDate = (git -C upstream show -s --format=%cs HEAD).Trim().Replace("-", ".")
+          $needsRelease = $false
+          $reason = "No build-relevant upstream changes"
+
+          if ([string]::IsNullOrWhiteSpace($env:LAST_RELEASE_SHA)) {
+              $needsRelease = $true
+              $reason = "The latest release has no upstream commit marker"
+          } elseif ($env:LATEST_RELEASE_COMPLETE -ne "true") {
+              $needsRelease = $true
+              $reason = "The latest release is missing one or more required assets"
+          } elseif ($env:LAST_RELEASE_SHA -notmatch "^[0-9a-f]{40}$") {
+              $needsRelease = $true
+              $reason = "The latest release has an invalid upstream commit marker"
+          } else {
+              & git -C upstream merge-base --is-ancestor $env:LAST_RELEASE_SHA $upstreamSha
+              $isAncestor = $LASTEXITCODE -eq 0
+
+              if (-not $isAncestor) {
+                  $needsRelease = $true
+                  $reason = "The upstream history no longer contains the release marker"
+              } else {
+                  $changedFiles = @(git -C upstream diff --name-only "$($env:LAST_RELEASE_SHA)..$upstreamSha")
+                  $buildFiles = @(
+                      "^FlashGot\.sln$",
+                      "^FlashGot/.*\.(c|cc|cpp|cxx|h|hh|hpp|hxx|inl|rc|rc2|ico|manifest|vcxproj|filters|props|targets)$"
+                  )
+                  $buildChanges = @($changedFiles | Where-Object {
+                      $path = $_ -replace "\\", "/"
+                      $buildFiles | Where-Object { $path -match $_ }
+                  })
+
+                  if ($buildChanges.Count -gt 0) {
+                      $needsRelease = $true
+                      $reason = "Build-relevant files changed: $($buildChanges -join ', ')"
+                  }
+              }
+          }
+
+          Write-Output "Upstream commit: $upstreamSha"
+          Write-Output "Release required: $needsRelease"
+          Write-Output "Reason: $reason"
+
+          "needs_release=$($needsRelease.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "upstream_sha=$upstreamSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "upstream_short_sha=$upstreamShortSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "source_date=$sourceDate" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  build:
+    needs: detect
+    if: needs.detect.outputs.needs_release == 'true'
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    outputs:
+      file_version: ${{ steps.build.outputs.file_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact upstream commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPOSITORY }}
+          ref: ${{ needs.detect.outputs.upstream_sha }}
+          fetch-depth: 1
+          path: upstream
+          persist-credentials: false
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build and validate FlashGot
+        id: build
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+
+          $msbuild = (Get-Command msbuild -ErrorAction Stop).Source
+          $solution = Join-Path $env:GITHUB_WORKSPACE "upstream\FlashGot.sln"
+          $buildArguments = @(
+              $solution,
+              "/m",
+              "/t:Rebuild",
+              "/p:Configuration=Release",
+              "/p:Platform=Win32",
+              "/p:PostBuildEventUseInBuild=false"
+          )
+
+          & $msbuild @buildArguments "/p:PlatformToolset=v141_xp"
+          if ($LASTEXITCODE -eq 0) {
+              $toolset = "v141_xp"
+          } else {
+              Write-Output "v141_xp is unavailable; retrying with v143"
+              & $msbuild @buildArguments "/p:PlatformToolset=v143"
+              if ($LASTEXITCODE -ne 0) {
+                  throw "FlashGot build failed with both v141_xp and v143"
+              }
+              $toolset = "v143"
+          }
+          Write-Output "Build toolset: $toolset"
+
+          $builtExecutables = @(Get-ChildItem -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "upstream") -Filter "FlashGot.exe" -File -Recurse)
+          if ($builtExecutables.Count -ne 1) {
+              throw "Expected exactly one built FlashGot.exe, found $($builtExecutables.Count)"
+          }
+          $builtExecutable = $builtExecutables[0].FullName
+
+          $resourcePath = Join-Path $env:GITHUB_WORKSPACE "upstream\FlashGot\FlashGot.rc"
+          $resourceText = Get-Content -Raw -Path $resourcePath
+          $versionMatch = [regex]::Match($resourceText, "FILEVERSION\s+(\d+),(\d+),(\d+),(\d+)")
+          if (-not $versionMatch.Success) {
+              throw "Could not read FILEVERSION from $resourcePath"
+          }
+          $fileVersion = "{0}.{1}.{2}.{3}" -f $versionMatch.Groups[1].Value, $versionMatch.Groups[2].Value, $versionMatch.Groups[3].Value, $versionMatch.Groups[4].Value
+
+          $stagingPath = Join-Path $env:GITHUB_WORKSPACE "flashgot-release"
+          New-Item -ItemType Directory -Path $stagingPath -Force | Out-Null
+          Copy-Item -LiteralPath $builtExecutable -Destination (Join-Path $stagingPath "FlashGot.exe")
+          Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE "files\Aria2.zip") -Destination (Join-Path $stagingPath "Aria2.zip")
+
+          $smokeOutput = Join-Path $stagingPath "flashgot-managers.json"
+          & (Join-Path $stagingPath "FlashGot.exe") "--list-json" $smokeOutput
+          if ($LASTEXITCODE -ne 0) {
+              throw "FlashGot --list-json smoke test failed"
+          }
+          if (-not (Test-Path $smokeOutput -PathType Leaf)) {
+              throw "FlashGot smoke test did not create a JSON output file"
+          }
+          Get-Content -Raw -Path $smokeOutput | ConvertFrom-Json | Out-Null
+          Remove-Item -LiteralPath $smokeOutput -Force
+
+          "file_version=$fileVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: flashgot-release-${{ needs.detect.outputs.upstream_short_sha }}
+          path: flashgot-release
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    needs:
+      - detect
+      - build
+    if: needs.detect.outputs.needs_release == 'true' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release files
+        uses: actions/download-artifact@v4
+        with:
+          name: flashgot-release-${{ needs.detect.outputs.upstream_short_sha }}
+          path: flashgot-release
+
+      - name: Create or repair Release
+        uses: actions/github-script@v7
+        env:
+          UPSTREAM_SHA: ${{ needs.detect.outputs.upstream_sha }}
+          UPSTREAM_SHORT_SHA: ${{ needs.detect.outputs.upstream_short_sha }}
+          SOURCE_DATE: ${{ needs.detect.outputs.source_date }}
+          FILE_VERSION: ${{ needs.build.outputs.file_version }}
+          TARGET_SHA: ${{ github.sha }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = `v${process.env.SOURCE_DATE}-${process.env.UPSTREAM_SHORT_SHA}`;
+            const title = `FlashGot.exe ${process.env.FILE_VERSION}`;
+            const body = [
+              "Automated build from [benzBrake/Grabby-FlashGot](https://github.com/benzBrake/Grabby-FlashGot).",
+              "",
+              `Upstream commit: https://github.com/benzBrake/Grabby-FlashGot/commit/${process.env.UPSTREAM_SHA}`,
+              `Repository commit: https://github.com/${owner}/${repo}/commit/${process.env.TARGET_SHA}`,
+              "",
+              "Assets: FlashGot.exe and Aria2.zip.",
+              "",
+              `Grabby-FlashGot commit: ${process.env.UPSTREAM_SHA}`,
+            ].join("\n");
+
+            let release;
+            try {
+              const response = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+              release = response.data;
+              await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: release.id,
+                tag_name: tag,
+                target_commitish: process.env.TARGET_SHA,
+                name: title,
+                body,
+                draft: false,
+                prerelease: false,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+              const response = await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                target_commitish: process.env.TARGET_SHA,
+                name: title,
+                body,
+                draft: false,
+                prerelease: false,
+              });
+              release = response.data;
+            }
+
+            const assets = [
+              ["FlashGot.exe", "application/vnd.microsoft.portable-executable"],
+              ["Aria2.zip", "application/zip"],
+            ];
+            const existingAssets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner,
+              repo,
+              release_id: release.id,
+              per_page: 100,
+            });
+            const assetNames = new Set(assets.map(([name]) => name));
+            for (const asset of existingAssets) {
+              if (assetNames.has(asset.name)) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner,
+                  repo,
+                  asset_id: asset.id,
+                });
+              }
+            }
+
+            for (const [name, contentType] of assets) {
+              const filePath = path.join("flashgot-release", name);
+              const data = fs.readFileSync(filePath);
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.id,
+                name,
+                data,
+                headers: {
+                  "content-type": contentType,
+                  "content-length": data.length,
+                },
+              });
+            }
+
+            core.info(`Published ${tag}: ${title}`);

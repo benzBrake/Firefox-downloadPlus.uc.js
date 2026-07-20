@@ -63,7 +63,7 @@ Aria2 ZIP 包包含 Aria2c 可执行文件，可从 [Releases](https://github.co
 - `userChromeJS.downloadPlus.notice.DL_FAILED` — 下载失败通知音路径
 
 支持的下载工具：
-- FlashGot 支持的工具列表见：[pouriap/Grabby](https://github.com/pouriap/Grabby)
+- FlashGot 支持的工具列表见：[benzBrake/Grabby-FlashGot](https://github.com/benzBrake/Grabby-FlashGot)
 - Aria2 CLI（命令行模式）
 - Aria2 RPC（Web 接口模式，支持自动启动）
 
@@ -99,8 +99,8 @@ const DOWNLOAD_RULES = [
 
 ### 如何下载 FlashGot.exe 和 Aria2
 
-- **FlashGot.exe**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/download/v2023.05.11/FlashGot.exe
-- **Aria2.zip**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases（包含 aria2c.exe）
+- **FlashGot.exe**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/latest/download/FlashGot.exe
+- **Aria2.zip**: https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/latest/download/Aria2.zip（包含 aria2c.exe）
 
 ### 本地化(Localization)
 
@@ -132,4 +132,4 @@ const LANG = {
 
 ### 感谢(Thanks)
 
-[pouriap/Grabby: A browser extension for downloading files and media from websites](https://github.com/pouriap/Grabby)
+[benzBrake/Grabby-FlashGot: Download manager bridge application for Grabby addon](https://github.com/benzBrake/Grabby-FlashGot)

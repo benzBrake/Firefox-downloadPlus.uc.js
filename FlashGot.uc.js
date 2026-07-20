@@ -7,7 +7,7 @@ FlashGot.exe 的默认存放路径是 配置文件夹\chrome\UserTools\FlashGot.
 如果需要修改，请在 about:config 中新增字符串配置项 userChromeJS.downloadPlus.flashgotPath，填入相对路径即可。
 比如 \\chrome\\UserTools\\FlashGot.exe，需要使用\\替代\
 
-FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
+FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/latest/download/FlashGot.exe
 */
 // @version         1.1.0
 // @license         MIT License

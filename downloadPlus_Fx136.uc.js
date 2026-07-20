@@ -9,9 +9,8 @@ userChromeJS.downloadPlus.enableFlashgotIntergention 启用 Flashgot 集成
 userChromeJS.downloadPlus.flashgotPath Flashgot可执行文件路径
 userChromeJS.downloadPlus.enableJDownloader 启用 JDownloader 集成（需要 JDownloader 已经运行）
 userChromeJS.downloadPlus.enableJDownloaderAutoStartDownloads 任务添加到 JDownloader 后自动开始下载
-FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/tag/v2023.05.11
-grabby_flashgot.exe 下载：https://github.com/pouriap/Grabby-FlashGot
-Aria2 下载：https://cdn.jsdmirror.com/gh/benzBrake/Firefox-downloadPlus.uc.js@main/files/Aria2.zip
+FlashGot.exe 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/latest/download/FlashGot.exe
+Aria2 下载：https://github.com/benzBrake/Firefox-downloadPlus.uc.js/releases/latest/download/Aria2.zip
 比如 \\chrome\\UserTools\\FlashGot.exe，需要使用\\替代\
 userChromeJS.downloadPlus.aria2Path aria2c 可执行文件路径
 userChromeJS.downloadPlus.enableAria2AutoStart 启动 Firefox 时自动启动 Aria2 RPC
@@ -30,7 +29,7 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
 // @note            20260718 增加 JDownloader 集成，支持通过本地接口添加下载任务与自动开始下载
 // @note            20260710 修复改名后另存为与回车保存可能产生失败记录和完成记录两条下载历史的问题
 // @note            20260622 Places 下载页增加删除失败/失效下载记录按钮，并跟随下载视图工具栏显示
-// @note            20260528 适配新版 grabby_flashgot.exe 命令行：无参数输出 JSON 下载器列表，下载任务从 stdin 读取 JSON
+// @note            20260528 适配新版 FlashGot.exe 命令行：无参数输出 JSON 下载器列表，下载任务从 stdin 读取 JSON
 // @note            20260528 修复首次打开多个窗口时可能并发调用 FlashGot.exe 扫描下载器列表的问题
 // @note            20260409 alerts 支持右下角自绘非全局 toast 提示，Aria2 RPC 添加成功与相关设置提示改为仅当前窗口显示
 // @note            20260408 Aria2 RPC 自动启动增加 RPC/进程双重检测，避免重复启动并区分自动/手动提示
@@ -586,24 +585,20 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         SECURITY_DIALOG_DELAY: 0,        // 安全对话框延迟(禁用)
         get FLASHGOT_PATH () {
             delete this.FLASHGOT_PATH;
-            let flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT_PATH, "\\chrome\\UserTools\\grabby_flashgot.exe");
-            if (/\\FlashGot\.exe$/i.test(flashgotPref)) {
-                const grabbyPath = handlePath("\\chrome\\UserTools\\grabby_flashgot.exe");
-                const grabbyFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
-                try {
-                    grabbyFile.initWithPath(grabbyPath);
-                    if (grabbyFile.exists()) {
-                        flashgotPref = "\\chrome\\UserTools\\grabby_flashgot.exe";
-                        Services.prefs.setStringPref(this.PREF_FLASHGOT_PATH, flashgotPref);
-                    }
-                } catch (ex) { }
-            }
+            let flashgotPref = Services.prefs.getStringPref(this.PREF_FLASHGOT_PATH, "\\chrome\\UserTools\\FlashGot.exe");
             flashgotPref = handlePath(flashgotPref);
             const flashgotFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
             flashgotFile.initWithPath(flashgotPref);
             if (flashgotFile.exists()) {
-                if ("cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path)) {
-                    this.NEWER_FLASHGOT = true;
+                const fileVersion = getFileVersion(flashgotFile.path);
+                if (fileVersion) {
+                    try {
+                        this.NEWER_FLASHGOT = Services.vc.compare(fileVersion, "0.60.1.0") >= 0;
+                    } catch (ex) {
+                        this.NEWER_FLASHGOT = "cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path);
+                    }
+                } else {
+                    this.NEWER_FLASHGOT = "cd2a6299e96f735e1dd35edb0f12ea2d" !== getMD5(flashgotFile.path);
                 }
                 return this.FLASHGOT_PATH = flashgotFile.path;
             } else {
@@ -3316,6 +3311,40 @@ userChromeJS.downloadPlus.showAllDrives 下载对话框显示所有驱动器
         }
 
         return Array.from(hash, (c, i) => toHexString(hash.charCodeAt(i))).join("");
+    }
+
+    function getFileVersion (filePath) {
+        if (!AppConstants.platform.startsWith("win")) return "";
+
+        let outputFile = null;
+        try {
+            const powerShellFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
+            powerShellFile.initWithPath(handlePath('{SysD}\\WindowsPowerShell\\v1.0\\powershell.exe'));
+            if (!powerShellFile.exists()) return "";
+
+            outputFile = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
+            outputFile.initWithPath(handlePath('{TmpD}\\flashgot.version.' + Math.random().toString(36).slice(2) + '.txt'));
+
+            const toPowerShellStringLiteral = value => "'" + String(value).replace(/'/g, "''") + "'";
+            const script = [
+                "$ErrorActionPreference = 'Stop'",
+                `$version = (Get-Item -LiteralPath ${toPowerShellStringLiteral(filePath)}).VersionInfo.FileVersion`,
+                `[System.IO.File]::WriteAllText(${toPowerShellStringLiteral(outputFile.path)}, [string]$version, [System.Text.Encoding]::UTF8)`,
+            ].join("; ");
+            const process = Cc['@mozilla.org/process/util;1'].createInstance(Ci.nsIProcess);
+            process.init(powerShellFile);
+            const args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script];
+            process.runw(true, args, args.length);
+
+            return outputFile.exists() ? readText(outputFile.path, "UTF-8").trim() : "";
+        } catch (ex) {
+            console.error("Failed to read FlashGot file version:", ex);
+            return "";
+        } finally {
+            try {
+                if (outputFile?.exists()) outputFile.remove(false);
+            } catch (ex) { }
+        }
     }
 
     function getMD5 (filePath) {
