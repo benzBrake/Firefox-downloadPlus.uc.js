@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  repository_dispatch:
+    types:
+      - grabby-flashgot-nightly-ready
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +19,7 @@ concurrency:
 env:
   UPSTREAM_REPOSITORY: benzBrake/Grabby-FlashGot
   UPSTREAM_BRANCH: master
+  DISPATCHED_UPSTREAM_SHA: ${{ github.event.client_payload.source_sha || '' }}
 
 jobs:
   detect:
@@ -70,9 +75,30 @@ jobs:
           Set-StrictMode -Version Latest
           $ErrorActionPreference = "Stop"
 
-          $upstreamSha = (git -C upstream rev-parse HEAD).Trim().ToLowerInvariant()
+          $upstreamHead = (git -C upstream rev-parse HEAD).Trim().ToLowerInvariant()
+          $upstreamSha = $upstreamHead
+          $dispatchedUpstreamSha = ([string]$env:DISPATCHED_UPSTREAM_SHA).Trim().ToLowerInvariant()
+
+          if (-not [string]::IsNullOrWhiteSpace($dispatchedUpstreamSha)) {
+              if ($dispatchedUpstreamSha -notmatch "^[0-9a-f]{40}$") {
+                  throw "The dispatched upstream SHA is invalid: $dispatchedUpstreamSha"
+              }
+
+              & git -C upstream cat-file -e "${dispatchedUpstreamSha}^{commit}"
+              if ($LASTEXITCODE -ne 0) {
+                  throw "The dispatched upstream SHA does not exist: $dispatchedUpstreamSha"
+              }
+
+              & git -C upstream merge-base --is-ancestor $dispatchedUpstreamSha $upstreamHead
+              if ($LASTEXITCODE -ne 0) {
+                  throw "The dispatched upstream SHA is not reachable from $env:UPSTREAM_BRANCH: $dispatchedUpstreamSha"
+              }
+
+              $upstreamSha = $dispatchedUpstreamSha
+          }
+
           $upstreamShortSha = $upstreamSha.Substring(0, 7)
-          $sourceDate = (git -C upstream show -s --format=%cs HEAD).Trim().Replace("-", ".")
+          $sourceDate = (git -C upstream show -s --format=%cs $upstreamSha).Trim().Replace("-", ".")
           $needsRelease = $false
           $reason = "No build-relevant upstream changes"
 
