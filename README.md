@@ -24,7 +24,7 @@ _依赖 userChrome.js Loader_
 1. **downloadPlus_Fx136.uc.js** 不再解释
 2. **downloadPlus_ff98.uc.js** 老版本，Firefox 136+ 无法使用
 3. **downloadSoundPlay_Fx26.uc.js** 下载提示音独立脚本
-4. **FlashGot.uc.js** FlashGot 联动功能独立脚本
+4. **FlashGot.uc.js** FlashGot 联动功能独立脚本(已停更，请使用[DownloadIt](https://github.com/benzBrake/DownloadIt))
 5. **removeFileFromDownloadManager.uc.js** 右键菜单添加永久删除文件独立脚本
 
 ### 说明
@@ -63,6 +63,7 @@ Aria2 ZIP 包包含 Aria2c 可执行文件，可从 [Releases](https://github.co
 - `userChromeJS.downloadPlus.notice.DL_FAILED` — 下载失败通知音路径
 
 支持的下载工具：
+
 - FlashGot 支持的工具列表见：[benzBrake/Grabby-FlashGot](https://github.com/benzBrake/Grabby-FlashGot)
 - Aria2 CLI（命令行模式）
 - Aria2 RPC（Web 接口模式，支持自动启动）
